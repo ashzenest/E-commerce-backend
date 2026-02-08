@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { ApiError } from "../utils/ApiError.js";
 import { DB_NAME } from "../constant.js";
 
 const connectDatabase = async() => {
