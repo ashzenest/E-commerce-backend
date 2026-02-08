@@ -2,19 +2,10 @@ import mongoose from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
 import { DB_NAME } from "../constant.js";
 
-const tryConnectingWithDatabase = async () => {
-    try {
-        await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
-        return
-    } catch (error) {
-        throw new ApiError(500, "Database connection failed")
-    }
-}
-
 const connectDatabase = async() => {
     for(let i = 0; i<5; i++){
         try{
-            await tryConnectingWithDatabase()
+            await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
             console.log("Successfully connected to Database")
             return
         }catch(error){
