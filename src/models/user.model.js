@@ -8,11 +8,14 @@ const userSchema = mongoose.Schema({
         required: true,
         unique: true,
         lowercase: true,
-        trim: true
+        trim: true,
+        minlength: [3, "Username must be at least 3 characters"]
     },
     fullname: {
         type: String,
         required: true,
+        trim: true,
+        minlength: [2, "Fullname must be at least 2 characters"]
     },
     avatar: {
         type: String,
@@ -20,9 +23,11 @@ const userSchema = mongoose.Schema({
     },
     email: {
         type: String,
-        required: true,
+        required: [true, "Email is required"],
         unique: true,
-        trim: true
+        trim: true,
+        match: [/^\S+@\S+\.\S+$/, "Invalid email format"],
+        lowercase: true
     },
     orders: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -35,11 +40,13 @@ const userSchema = mongoose.Schema({
     password: {
         type: String,
         required: true,
-        select: false
+        select: false,
+        minlength: [8, "Password must be at least 8 characters"]
     },
     role: {
         type: String,
-        enum: ["customer", "seller", "admin"]
+        enum: ["customer", "seller", "admin"],
+        default: "customer"
     },
     refreshToken: {
         type: String
@@ -47,12 +54,11 @@ const userSchema = mongoose.Schema({
 }, {timestamps: true})
 
 userSchema.pre("save", async function(next) {
-    if(this.isModified("password")){
-        this.password = await bcrypt.hash(this.password, 10)
-        next()
-    } else{
+    if(!this.isModified("password")){
         return next()
     }
+    this.password = await bcrypt.hash(this.password, 10)
+    next()
 })
 
 userSchema.methods.isPasswordCorrect = async function(password){
