@@ -67,7 +67,7 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
     const {username, email, password} = req.body
 
-    if (!username && !email) {
+    if (!username || !email) {
         throw new ApiError(400, "Username or email is required")
     }
 
@@ -95,6 +95,22 @@ const loginUser = asyncHandler(async (req, res) => {
         secure: true
     }
     return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).json(new ApiResponse(200, {}, "Login successfull"))
+})
+
+const logoutUser = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(req.user._id,
+        {
+            $set: {
+                refreshToken: null
+            }
+        })
+    
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res.status(200).clearCookie("accessToken", options).clearCookie("refreshToken", options).json(new ApiResponse(200, {}, "User logged out successfully"))  
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
@@ -125,8 +141,49 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).json(new ApiResponse(200, {}, "Refresh access token successfull"))
 })
 
+const changeCurrentPassword = asyncHandler(async(req, res) => {
+
+    const {oldPassword, newPassword} = req.body
+
+    if(!oldPassword || !newPassword){
+        throw new ApiError(400, "Both old and new password are required")
+    }
+
+    if(oldPassword === newPassword){
+        throw new ApiError(400, "New password must be different from old password")
+    }
+
+    const user = await User.findById(req.user._id).select("+password")
+    const isOldPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if(!isOldPasswordCorrect){
+        throw new ApiError(400, "Incorrect current password")
+    }
+
+    user.password = newPassword
+    user.refreshToken = null
+
+    try {
+        await user.save()
+    } catch (error) {
+        if(error.name === "ValidationError"){
+            throw new ApiError(400, error.message)
+        }
+        throw new ApiError(500, "Could not change password")
+    }
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+    
+    return res.status(200).clearCookie("accessToken", options).clearCookie("refreshToken", options).json(new ApiResponse(200, {}, "Password changed successfully. Please login again."))
+})
+
 export {
     registerUser,
     loginUser,
-    refreshAccessToken
+    logoutUser,
+    refreshAccessToken,
+    changeCurrentPassword
 }
