@@ -1,9 +1,10 @@
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.model.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
+import { extractPublicId } from "../utils/extractPublicId.js"
 
 //ONLY ACCEPT STRING AS INPUT
 
@@ -180,10 +181,39 @@ const changeCurrentPassword = asyncHandler(async(req, res) => {
     return res.status(200).clearCookie("accessToken", options).clearCookie("refreshToken", options).json(new ApiResponse(200, {}, "Password changed successfully. Please login again."))
 })
 
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    const avatarLocalPath = req.file?.path
+    if(!avatarLocalPath){
+        throw new ApiError(400, "Avatar required")
+    }
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!avatar?.url){
+        throw new ApiError(500, "Could not upload on cloudinary")
+    }
+    const user = await User.findByIdAndUpdate(req.user._id,
+        {
+            $set: {avatar: avatar.url}
+        },{new: true}).select("-refreshToken")
+
+    if(!user){
+        throw new ApiError(500, "Could not update user avatar")
+    }
+    if(req.user.avatar && !req.user.avatar.includes("/defaultuser/")){
+        const publicId = extractPublicId(req.user.avatar)
+        if(publicId){
+            await deleteFromCloudinary(publicId)
+        }
+    }
+
+    return res.status(200).json(new ApiResponse(200, user, "Avatar changed successfully"))
+})
+
 export {
     registerUser,
     loginUser,
     logoutUser,
     refreshAccessToken,
-    changeCurrentPassword
+    changeCurrentPassword,
+    updateUserAvatar
 }
