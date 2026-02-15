@@ -5,6 +5,7 @@ import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 import { extractPublicId } from "../utils/extractPublicId.js"
+import { sendRegistrationEmail } from "../services/email.service.js"
 
 //ONLY ACCEPT STRING AS INPUT
 
@@ -62,6 +63,7 @@ const registerUser = asyncHandler(async (req, res) => {
     if(!createdUser){
         throw new ApiError(500, "Something went wrong while registering the user")
     }
+    sendRegistrationEmail(createdUser.email, createdUser.fullname)
     return res.status(201).json(new ApiResponse(201, createdUser, "User registered successfully"))
 })
 
