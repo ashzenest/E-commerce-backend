@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {changeCurrentPassword, changeEmailRequest, changeUsername, getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser, updateFullname, updateUserAvatar, usernameAvailableOrNot, verifychangeEmailRequest} from "../controllers/user.controllers.js"
+import {changeCurrentPassword, changeEmailRequest, changeUsername, getCurrentUser, getOrders, getWishlist, loginUser, logoutUser, refreshAccessToken, registerUser, updateFullname, updateUserAvatar, usernameAvailableOrNot, verifychangeEmailRequest} from "../controllers/user.controllers.js"
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -19,5 +19,7 @@ router.route("/change-username").patch(verifyJWT, changeUsername)
 router.route("/request-email-change").post(verifyJWT, changeEmailRequest)
 router.route("/verify-email-change").get(verifychangeEmailRequest)
 router.route("/me").get(verifyJWT, getCurrentUser)
+router.route("/get-wishlist").get(verifyJWT, getWishlist)
+router.route("/get-orders").get(verifyJWT, getOrders)
 
 export default router

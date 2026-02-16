@@ -364,6 +364,34 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, user, "User fetched successfully"))
 })
 
+const getWishlist = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id).select("wishlist")
+        .populate({
+            path: "wishlist",
+            populate: {
+                path: "products"
+            }
+        })
+    if(!user){
+        throw new ApiError(404, "User not found")
+    }
+    return res.status(200).json(new ApiResponse(200, user, "Wishlist fetched successfully"))
+})
+
+const getOrders = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id).select("orders")
+        .populate({
+            path: "orders",
+            populate: {
+                path: "products.product"
+            }
+        })
+    if(!user){
+        throw new ApiError(404, "User not found")
+    }
+    return res.status(200).json(new ApiResponse(200, user, "Orders fetched successfully"))
+})
+
 export {
     registerUser,
     loginUser,
@@ -376,5 +404,7 @@ export {
     changeUsername,
     changeEmailRequest,
     verifychangeEmailRequest,
-    getCurrentUser
+    getCurrentUser,
+    getWishlist,
+    getOrders
 }
