@@ -5,7 +5,7 @@ import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 import { extractPublicId } from "../utils/extractPublicId.js"
-import { sendChangeEmailRequest, sendRegistrationEmail } from "../services/email.service.js"
+import { sendChangeEmailRequest, sendForgetPasswordEmail, sendRegistrationEmail } from "../services/email.service.js"
 import { Wishlist } from "../models/wishlist.model.js"
 import {Product} from "../models/product.model.js"
 import mongoose from "mongoose"
@@ -418,6 +418,60 @@ const getOrderById = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, order, "Order fetched successfully"))
 })
 
+const changePasswordRequest = asyncHandler(async (req, res) => {
+    const {email} = req.body
+    const emailToGetUserFrom = email?.trim()
+    if(!emailToGetUserFrom){
+        throw new ApiError(400, "Email is required")
+    }
+    const user = await User.findOne({email: emailToGetUserFrom})
+
+    if(!user){
+        throw new ApiError(404, "User not found")
+    }
+
+    const passwordResetToken = await user.generatePasswordResetToken()
+    const magicLink = `${process.env.BASE_URL}/api/users/verify-password-reset?token=${passwordResetToken}`
+    sendForgetPasswordEmail(emailToGetUserFrom, user.fullname, magicLink)
+
+    return res.status(200).json(new ApiResponse(200, {}, "Password reset link sent to your Email"))
+})
+
+const verifyChangePasswordRequest = asyncHandler(async (req, res) => {
+    const {token} = req.query
+    const {password} = req.body
+    const newPassword = password?.trim()
+    if(!newPassword){
+        throw new ApiError(400, "New password is required")
+    }
+
+    let decodedToken
+    try {
+        decodedToken = jwt.verify(token, process.env.PASSWORD_RESET_TOKEN_SECRET)
+    } catch (error) {
+        throw new ApiError(400, "Invalid or Expired token")
+    }
+    if(decodedToken.purpose !== "password-reset"){
+        throw new ApiError(400, "Invalid token")
+    }
+    const user = await User.findById(decodedToken._id).select("+password")
+    if(!user){
+        throw new ApiError(400, "Invalid token")
+    }
+    user.password = newPassword
+    user.refreshToken = null
+    try {
+        await user.save()
+    } catch (error) {
+        if(error.name === "ValidationError"){
+            throw new ApiError(400, error.message)
+        }
+        throw new ApiError(500, "Could not reset password")
+    }
+
+    return res.status(200).json(new ApiResponse(200, {}, "Password reset successfully"))
+})
+
 export {
     registerUser,
     loginUser,
@@ -435,5 +489,7 @@ export {
     getOrders,
     addToWishlist,
     removeFromWishlist,
-    getOrderById
+    getOrderById,
+    changePasswordRequest,
+    verifyChangePasswordRequest
 }

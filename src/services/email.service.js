@@ -92,7 +92,35 @@ const sendChangeEmailRequest = async(userEmail, fullname, magicLink) => {
     }
   return sent
 }
+
+const sendForgetPasswordEmail = async(userEmail, fullname, magicLink) => {
+  const subject = "Confirm your password reset"
+  const text = `Hello ${fullname}\n\n To confirm your password reset, please click the link below:\n\n ${magicLink}\n\n This link expires in 15 minutes.\n\nIf you didn't request this change, please ignore this email.`
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <p>Hello ${fullname},</p>
+      <p>To confirm your password reset, please click the button below:</p>
+      <br>
+      <a href="${magicLink}" 
+         style="display: inline-block; background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+        Reset password
+      </a>
+      <br><br>
+      <p style="color: #666;">This link expires in 15 minutes.</p>
+      <p style="color: #666;">If you didn't request this change, please ignore this email.</p>
+    </div>`
+
+  const sent = await sendEmailWithRetry(userEmail, subject, text, html)
+  if(sent){
+    console.log("Reset password link sent successfully")
+  }else{
+    console.error("Failed to send reset-password Email")
+  }
+  return sent
+}
+
 export {
   sendRegistrationEmail,
-  sendChangeEmailRequest
+  sendChangeEmailRequest,
+  sendForgetPasswordEmail
 }
