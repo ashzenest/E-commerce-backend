@@ -11,6 +11,7 @@ import {Product} from "../models/product.model.js"
 import mongoose from "mongoose"
 import { Order } from "../models/order.model.js"
 import { options } from "../utils/options.js"
+import { Review } from "../models/review.model.js"
 
 //ONLY ACCEPT STRING AS INPUT
 
@@ -472,6 +473,11 @@ const verifyChangePasswordRequest = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, {}, "Password reset successfully"))
 })
 
+const getReviews = asyncHandler(async (req, res) => {
+    const reviews = await Review.find({user: req.user._id}).populate("product", "name seller").sort({createdAt: -1})
+    return res.status(200).json(new ApiResponse(200, reviews, "User's review fetched successfully"))
+})
+
 export {
     registerUser,
     loginUser,
@@ -491,5 +497,6 @@ export {
     removeFromWishlist,
     getOrderById,
     changePasswordRequest,
-    verifyChangePasswordRequest
+    verifyChangePasswordRequest,
+    getReviews
 }
