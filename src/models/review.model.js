@@ -22,5 +22,4 @@ const reviewSchema = new mongoose.Schema({
     }
 },{timestamps: true})
 
-//method for changing the review
 export const Review = mongoose.model("Review", reviewSchema)
