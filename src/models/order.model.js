@@ -12,6 +12,10 @@ const orderSchema = new mongoose.Schema({
             ref: "Product",
             required: true
         },
+        seller: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User"
+        },
         quantity: {
             type: Number,
             default: 1,
