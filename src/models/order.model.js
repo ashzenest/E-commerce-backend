@@ -57,15 +57,4 @@ const orderSchema = new mongoose.Schema({
     }
 },{timestamps: true})
 
-//STILL NEED TO WRITE PROPER PRE HOOK FOR ALL OF IT
-orderSchema.pre(["findOneAndUpdate", "updateOne", "updateMany", "save"], function(next){
-    if(this.paymentMethod==="cod"){
-        this.paymentStatus = "pending";
-    }
-    if(this.paymentStatus==="paid" && !this.paidAt){
-        this.paidAt = new Date()
-    }
-    next()
-})
-
 export const Order = mongoose.model("Order", orderSchema)

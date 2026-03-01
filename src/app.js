@@ -13,7 +13,7 @@ import mongoSanitize from "express-mongo-sanitize"
 const app = express()
 
 app.use(helmet())
-app.use(mongoSanitize())
+// app.use(mongoSanitize())
 
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
