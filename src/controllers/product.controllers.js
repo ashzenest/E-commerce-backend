@@ -4,7 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import { Category } from "../models/category.model.js";
 import { Product } from "../models/product.model.js";
 import {User} from "../models/user.model.js"
-import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js"
+import { deleteFromCloudinary, uploadOnCloudinary } from "../services/cloudinary.service.js"
 import { extractPublicId } from "../utils/extractPublicId.js"
 import mongoose from "mongoose";
 
