@@ -3,6 +3,8 @@ import { Category } from "../models/category.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { cacheGet, cacheSet } from "../services/valkey.service.js";
+import { CacheKeys } from "../utils/cacheKeys.js";
 
 const createCategory = asyncHandler(async (req, res) => {
     const {name, description} = req.body
@@ -65,8 +67,13 @@ const deleteCategory = asyncHandler(async (req, res) => {
 })
 
 const getAllCategories = asyncHandler(async (req, res) => {
+    const cached = await cacheGet(CacheKeys.allCategory())
+    if(cached){
+        return res.status(200).json(new ApiResponse(200, cached, "Category fetched successfully"))
+    }
     const categories = await Category.find()
-    return res.status(200).json(new ApiResponse(200, {categories}, "Categories fetched successfully"))
+    cacheSet(CacheKeys.allCategory(), categories, 60*60*12)
+    return res.status(200).json(new ApiResponse(200, categories, "Categories fetched successfully"))
 })
 
 const getCategoryById = asyncHandler(async (req, res) => {
@@ -74,10 +81,16 @@ const getCategoryById = asyncHandler(async (req, res) => {
     if(!mongoose.Types.ObjectId.isValid(categoryId)){
         throw new ApiError(400, "Invalid Category Id format")
     }
+
+    const cached = await cacheGet(CacheKeys.category(categoryId))
+    if(cached){
+        return res.status(200).json(new ApiResponse(200, cached, "Category fetched successfully"))
+    }
     const category = await Category.findById(categoryId)
     if(!category){
         throw new ApiError(404, "Category not found")
     }
+    cacheSet(CacheKeys.category(categoryId), category, 60*60*12)
     return res.status(200).json(new ApiResponse(200, category, "Category fetched successfully"))
 })
 

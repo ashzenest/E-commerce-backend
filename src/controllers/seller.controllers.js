@@ -7,6 +7,7 @@ import { Category } from "../models/category.model.js";
 import { Order } from "../models/order.model.js";
 import { User } from "../models/user.model.js";
 
+//ADD CACHING HERE TOO
 const getMyProducts = asyncHandler(async (req, res) => {
     const filter = {
         seller: req.user._id

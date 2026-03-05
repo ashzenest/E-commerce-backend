@@ -19,7 +19,31 @@ const isTokenBlacklisted = async(accessToken) => {
     return isBlacklisted !== null
 }
 
+const cacheSet = async(key, value, remainingTTL) => {
+    const valkeyClient = getValkeyClient()
+
+    await valkeyClient.set(key, JSON.stringify(value),
+        {
+            expiry: {type: TimeUnit.Seconds, count: remainingTTL}
+        }
+    )
+}
+
+const cacheGet = async(key) => {
+    const valkeyClient = getValkeyClient()
+    const result = await valkeyClient.get(key)
+    return result ? JSON.parse(result) : null
+}
+
+const cacheDel = async(key) => {
+    const valkeyClient = getValkeyClient()
+    await valkeyClient.del(key)
+}
+
 export {
     blacklistToken,
-    isTokenBlacklisted
+    isTokenBlacklisted,
+    cacheSet,
+    cacheGet,
+    cacheDel
 }
