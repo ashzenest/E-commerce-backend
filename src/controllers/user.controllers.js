@@ -14,6 +14,7 @@ import { options } from "../utils/options.js"
 import { Review } from "../models/review.model.js"
 import { blacklistToken } from "../services/valkey.service.js"
 import { calculateRemainingTTL } from "../utils/calculateRemainingTTL.js"
+import { loginUserRateLimiter, forgotPasswordUserRateLimiter, emailChangeUserRateLimiter } from "../middlewares/rateLimiter.middleware.js"
 
 //ONLY ACCEPT STRING AS INPUT
 
@@ -93,6 +94,7 @@ const loginUser = asyncHandler(async (req, res) => {
     if(!user){
         throw new ApiError(404, "User does not exist")
     }
+    await loginUserRateLimiter(user._id)
 
     const isPasswordValid = await user.isPasswordCorrect(password)
     if(!isPasswordValid){
@@ -276,6 +278,7 @@ const changeUsername = asyncHandler(async (req, res) => {
 })
 
 const changeEmailRequest = asyncHandler(async (req, res) => {
+    await emailChangeUserRateLimiter(req.user._id)
     const {email} = req.body
 
     const newEmail = email?.trim()
@@ -435,6 +438,7 @@ const changePasswordRequest = asyncHandler(async (req, res) => {
     if(!user){
         throw new ApiError(404, "User not found")
     }
+    await forgotPasswordUserRateLimiter(user._id)
 
     const passwordResetToken = await user.generatePasswordResetToken()
     const magicLink = `${process.env.BASE_URL}/api/users/verify-password-reset?token=${passwordResetToken}`

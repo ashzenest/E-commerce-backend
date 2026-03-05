@@ -3,14 +3,16 @@ import {addToWishlist, changeCurrentPassword, changeEmailRequest, changePassword
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { blacklistCheck } from "../middlewares/blacklist.middleware.js";
+import { loginIpRateLimiter, registerIpRateLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 const router = Router()
 
-router.route("/register-user").post(upload.single("avatar"), registerUser)
-router.route("/login-user").post(loginUser)
+router.route("/register-user").post(registerIpRateLimiter, upload.single("avatar"), registerUser)
+router.route("/login-user").post(loginIpRateLimiter, loginUser)
 router.route("/verify-password-reset").post(verifyChangePasswordRequest)
 router.route("/verify-email-change").get(verifychangeEmailRequest)
 router.route("/refresh-tokens").post(refreshAccessToken)
+router.route("/forgot-password").post(changePasswordRequest)
 
 router.use(verifyJWT, blacklistCheck)
 
@@ -27,6 +29,5 @@ router.route("/me/get-wishlist").get(getWishlist)
 router.route("/me/get-orders").get(getOrders)
 router.route("/add-to-wishlist").post(addToWishlist)
 router.route("/remove-from-wishlist").post(removeFromWishlist)
-router.route("/forgot-password").post(changePasswordRequest)
 
 export default router
