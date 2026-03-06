@@ -40,10 +40,27 @@ const cacheDel = async(key) => {
     await valkeyClient.del(key)
 }
 
+const invalidateSellerProductsCache = async(sellerId) => {
+    const valkeyClient = getValkeyClient()
+    let cursor = 0
+    const keys = []
+
+    do{
+        const result = await valkeyClient.scan(cursor, {match: `products:seller:${sellerId}:page:*`,  count: 100})
+        cursor = result.cursor
+        keys.push(...result.keys)//there is a reason for this
+    } while(cursor !== 0)
+
+    if(keys.length){
+        await valkeyClient.del(keys)
+    }
+}
+
 export {
     blacklistToken,
     isTokenBlacklisted,
     cacheSet,
     cacheGet,
-    cacheDel
+    cacheDel,
+    invalidateSellerProductsCache
 }

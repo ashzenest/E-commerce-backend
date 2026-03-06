@@ -7,7 +7,7 @@ import {User} from "../models/user.model.js"
 import { deleteFromCloudinary, uploadOnCloudinary } from "../services/cloudinary.service.js"
 import { extractPublicId } from "../utils/extractPublicId.js"
 import mongoose from "mongoose";
-import { cacheGet, cacheSet } from "../services/valkey.service.js";
+import { cacheDel, cacheGet, cacheSet, invalidateSellerProductsCache } from "../services/valkey.service.js";
 import { CacheKeys } from "../utils/cacheKeys.js";
 
 const createProduct = asyncHandler(async (req, res) => {
@@ -85,6 +85,9 @@ const createProduct = asyncHandler(async (req, res) => {
     } finally {
         session.endSession();
     }
+
+    await invalidateSellerProductsCache(req.user._id)
+    
     return res.status(201).json(new ApiResponse(201, product[0], "Product created sucessfully"))
 })
 
@@ -101,6 +104,10 @@ const deleteProduct = asyncHandler(async (req, res) => {
         const publicId = extractPublicId(imageUrl)
         await deleteFromCloudinary(publicId)
     }
+
+    await cacheDel(CacheKeys.product(productId))
+    await invalidateSellerProductsCache(product.seller)
+
     return res.status(200).json(new ApiResponse(200, {}, "Product deleted successfully"))
 })
 
@@ -201,6 +208,9 @@ const updateProduct = asyncHandler(async (req, res) => {
         }
         throw new ApiError(500, "Transaction failed: " + error.message)
     }
+
+    await cacheDel(CacheKeys.product(productId))
+    await invalidateSellerProductsCache(product.seller)
 
     return res.status(200).json(new ApiResponse(200, updatedProduct, "Product updated successfully"))
 })

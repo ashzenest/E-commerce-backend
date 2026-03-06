@@ -6,6 +6,8 @@ import mongoose from "mongoose";
 import { Category } from "../models/category.model.js";
 import { Order } from "../models/order.model.js";
 import { User } from "../models/user.model.js";
+import { cacheDel, invalidateSellerProductsCache } from "../services/valkey.service.js";
+import { CacheKeys } from "../utils/cacheKeys.js";
 
 //ADD CACHING HERE TOO
 const getMyProducts = asyncHandler(async (req, res) => {
@@ -113,6 +115,9 @@ const updateStock = asyncHandler(async (req, res) => {
     if(!product){
         throw new ApiError(404, "Could not find product")
     }
+    await cacheDel(CacheKeys.product(productId))
+    await invalidateSellerProductsCache(product.seller)
+    
     return res.status(200).json(new ApiResponse(200, product, "Product's stock updated successfully"))
 })
 

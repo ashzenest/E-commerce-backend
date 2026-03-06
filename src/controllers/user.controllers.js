@@ -12,7 +12,7 @@ import mongoose from "mongoose"
 import { Order } from "../models/order.model.js"
 import { options } from "../utils/options.js"
 import { Review } from "../models/review.model.js"
-import { blacklistToken, cacheSet, cacheGet } from "../services/valkey.service.js"
+import { blacklistToken, cacheSet, cacheGet, cacheDel } from "../services/valkey.service.js"
 import { calculateRemainingTTL } from "../utils/calculateRemainingTTL.js"
 import { loginUserRateLimiter, forgotPasswordUserRateLimiter, emailChangeUserRateLimiter } from "../middlewares/rateLimiter.middleware.js"
 import { CacheKeys } from "../utils/cacheKeys.js";
@@ -204,6 +204,8 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         }
     }
 
+    await cacheDel(CacheKeys.userProfile(req.user._id))
+
     return res.status(200).json(new ApiResponse(200, user, "Avatar changed successfully"))
 })
 
@@ -218,6 +220,8 @@ const updateFullname = asyncHandler(async (req, res) => {
             $set:{fullname: newFullname}
         },{new: true, runValidators: true}
     ).select("-refreshToken")
+
+    await cacheDel(CacheKeys.userProfile(req.user._id))
 
     return res.status(200).json(new ApiResponse(200, user, "fullname changed successfully"))
 })
@@ -272,7 +276,9 @@ const changeUsername = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Could not change the username")
     }
 
-    const updatedUser = await User.findById(req.user._id).select("-refreshToken") 
+    const updatedUser = await User.findById(req.user._id).select("-refreshToken")
+
+    await cacheDel(CacheKeys.userProfile(req.user._id))
 
     return res.status(200).json(new ApiResponse(200, updatedUser, "Username changed successfully"))
 
@@ -339,6 +345,9 @@ const verifychangeEmailRequest = asyncHandler(async (req, res) => {
     if(!user){
         throw new ApiError(404, "User not found")
     }
+
+    await cacheDel(CacheKeys.userProfile(decodedToken._id))
+    
     return res.status(200).json(new ApiResponse(200, user, "Email changed successfully"))
 })
 

@@ -9,6 +9,8 @@ import mongoose from "mongoose";
 import { Product } from "../models/product.model.js";
 import { Review } from "../models/review.model.js"
 import { addDays } from "../utils/calculateDate.js";
+import { cacheDel, invalidateSellerProductsCache } from "../services/valkey.service.js";
+import { CacheKeys } from "../utils/cacheKeys.js";
 
 const getAllUsers = asyncHandler(async(req, res) => {
     const page = parseInt(req.query.page) || 1
@@ -101,6 +103,10 @@ const deleteProduct = asyncHandler(async (req, res) => {
         const publicId = extractPublicId(imageUrl)
         await deleteFromCloudinary(publicId)
     }
+
+    await cacheDel(CacheKeys.product(productId))
+    await invalidateSellerProductsCache(product.seller)
+
     return res.status(200).json(new ApiResponse(200, {}, "Product deleted successfully"))
 })
 
@@ -141,6 +147,9 @@ const updateProduct = asyncHandler(async (req, res) => {
     if(!product){
         throw new ApiError(404, "Product not found")
     }
+
+    await cacheDel(CacheKeys.product(productId))
+    await invalidateSellerProductsCache(product.seller)
 
     return res.status(200).json(new ApiResponse(200, product, "Product updated successfully"))
 })
@@ -232,6 +241,8 @@ const updateUserStatus = asyncHandler(async(req, res) => {
     if(!user){
         throw new ApiError(404, "User not found")
     }
+    
+    await cacheDel(CacheKeys.userProfile(userId))
     return res.status(200).json(new ApiResponse(200, user, `User ${action} successfully`))
 
 })
@@ -285,9 +296,12 @@ const deleteUser = asyncHandler(async(req, res) => {
                 const publicId = extractPublicId(link)
                 await deleteFromCloudinary(publicId)
             }
-        }  
+        }
+        await cacheDel(CacheKeys.product(product._id))
     }
-    
+
+    await cacheDel(CacheKeys.userProfile(userId))
+    await invalidateSellerProductsCache(userId)
     
     return res.status(200).json(new ApiResponse(200, {}, "User deleted successfully"))
 })
@@ -313,6 +327,9 @@ const updateUserRole = asyncHandler(async (req, res) => {
     if(!user){
         throw new ApiError(404, "User not found")
     }
+
+    await cacheDel(CacheKeys.userProfile(userId))
+
     return res.status(200).json(new ApiResponse(200, {}, "User role changed successfully"))
 })
 

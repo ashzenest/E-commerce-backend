@@ -3,7 +3,7 @@ import { Category } from "../models/category.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { cacheGet, cacheSet } from "../services/valkey.service.js";
+import { cacheDel, cacheGet, cacheSet } from "../services/valkey.service.js";
 import { CacheKeys } from "../utils/cacheKeys.js";
 
 const createCategory = asyncHandler(async (req, res) => {
@@ -17,6 +17,8 @@ const createCategory = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Category already exists")
     }
     const category = await Category.create({name: newName, description: description})
+
+    await cacheDel(CacheKeys.allCategory())
     
     return res.status(201).json(new ApiResponse(201, category, "Category created successfully"))
 })
@@ -50,6 +52,9 @@ const updateCategory = asyncHandler(async (req, res) => {
     if(!category){
         throw new ApiError(404, "Category not found")
     }
+
+    await cacheDel(CacheKeys.category(categoryId))
+    await cacheDel(CacheKeys.allCategory())
     
     return res.status(200).json(new ApiResponse(200, category, "Category updated successfully"))
 })
@@ -63,6 +68,10 @@ const deleteCategory = asyncHandler(async (req, res) => {
     if(!category){
         throw new ApiError(404, "Category not found")
     }
+
+    await cacheDel(CacheKeys.category(categoryId))
+    await cacheDel(CacheKeys.allCategory())
+
     return res.status(200).json(new ApiResponse(200, {}, "Category deleted successfully"))
 })
 
