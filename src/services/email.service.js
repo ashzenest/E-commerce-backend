@@ -16,30 +16,30 @@ const sendEmail = async (to, subject, text, html) => {
   }
 };
 
-const sendEmailWithRetry = async(to, subject, text, html, maxRetries = 5) => {
-    for(let tries = 0; tries <= maxRetries; tries++){
-        const succeed = await sendEmail(to, subject, text, html)
-        if(succeed){
-            return true
-        } else{
-            console.warn(`Email could not be sent for ${tries} times`)
-            if(tries < maxRetries){
-                const delay = Math.pow(2, tries) * 1000  // 2s, 4s, 8s, 16s, 32s
-                console.log(`Retrying in ${delay/1000} seconds...`)
-                await new Promise(resolve => setTimeout(resolve, delay))
-            }
-        }
+// const sendEmailWithRetry = async(to, subject, text, html, maxRetries = 5) => {
+//     for(let tries = 0; tries <= maxRetries; tries++){
+//         const succeed = await sendEmail(to, subject, text, html)
+//         if(succeed){
+//             return true
+//         } else{
+//             console.warn(`Email could not be sent for ${tries} times`)
+//             if(tries < maxRetries){
+//                 const delay = Math.pow(2, tries) * 1000  // 2s, 4s, 8s, 16s, 32s
+//                 console.log(`Retrying in ${delay/1000} seconds...`)
+//                 await new Promise(resolve => setTimeout(resolve, delay))
+//             }
+//         }
         
-    }
-    console.error(`Email failed after ${maxRetries} attempts`)
-    return false
-}
+//     }
+//     console.error(`Email failed after ${maxRetries} attempts`)
+//     return false
+// }
 
 const sendRegistrationEmail = async(userEmail, fullname) => {
     const subject = "User successfully registered"
     const text = `Hello ${fullname},\n\n Thank you for registering to ${process.env.APP_NAME}\n Best regards,\n\n The ${process.env.APP_NAME} Team`
     const html = `<p>Hello ${fullname}</p><p>Thank you for registering to ${process.env.APP_NAME}</p><p>Best regards,<br> The ${process.env.APP_NAME} Team</p>`
-    const sent = await sendEmailWithRetry(userEmail, subject, text, html)
+    const sent = await sendEmail(userEmail, subject, text, html)
     if(sent){
       console.log(`Registration Email sent successfully`)
     } else {
@@ -63,7 +63,7 @@ const sendChangeEmailRequest = async(userEmail, fullname, magicLink) => {
       <p style="color: #666;">This link expires in 15 minutes.</p>
       <p style="color: #666;">If you didn't request this change, please ignore this email.</p>
     </div>`
-  const sent = await sendEmailWithRetry(userEmail, subject, text, html)
+  const sent = await sendEmail(userEmail, subject, text, html)
   if(sent){
       console.log("Change-email request sent successfully")
     } else {
@@ -89,7 +89,7 @@ const sendForgetPasswordEmail = async(userEmail, fullname, magicLink) => {
       <p style="color: #666;">If you didn't request this change, please ignore this email.</p>
     </div>`
 
-  const sent = await sendEmailWithRetry(userEmail, subject, text, html)
+  const sent = await sendEmail(userEmail, subject, text, html)
   if(sent){
     console.log("Reset password link sent successfully")
   }else{

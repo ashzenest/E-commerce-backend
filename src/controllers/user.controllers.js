@@ -5,7 +5,6 @@ import { deleteFromCloudinary, uploadOnCloudinary } from "../services/cloudinary
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 import { extractPublicId } from "../utils/extractPublicId.js"
-import { sendChangeEmailRequest, sendForgetPasswordEmail, sendRegistrationEmail } from "../services/email.service.js"
 import { Wishlist } from "../models/wishlist.model.js"
 import {Product} from "../models/product.model.js"
 import mongoose from "mongoose"
@@ -16,6 +15,7 @@ import { blacklistToken, cacheDel, getWithLock } from "../services/valkey.servic
 import { calculateRemainingTTL } from "../utils/calculateRemainingTTL.js"
 import { loginUserRateLimiter, forgotPasswordUserRateLimiter, emailChangeUserRateLimiter } from "../middlewares/rateLimiter.middleware.js"
 import { CacheKeys } from "../utils/cacheKeys.js";
+import { addChangeEmailRequestToQueue, addForgetPasswordEmailToQueue, addSendRegistrationEmailToQueue } from "../queues/producers/email.producer.js"
 
 //ONLY ACCEPT STRING AS INPUT
 
@@ -73,7 +73,7 @@ const registerUser = asyncHandler(async (req, res) => {
     if(!createdUser){
         throw new ApiError(500, "Something went wrong while registering the user")
     }
-    sendRegistrationEmail(createdUser.email, createdUser.fullname)
+    addSendRegistrationEmailToQueue(createdUser.email, createdUser.fullname)
     return res.status(201).json(new ApiResponse(201, createdUser, "User registered successfully"))
 })
 
@@ -312,7 +312,7 @@ const changeEmailRequest = asyncHandler(async (req, res) => {
     const emailChangeToken = user.generateEmailChangeToken(newEmail)
     const magicLink = `${process.env.BASE_URL}/api/users/verify-email-change?token=${emailChangeToken}`
 
-    sendChangeEmailRequest(newEmail, req.user.fullname, magicLink)
+    addChangeEmailRequestToQueue(newEmail, req.user.fullname, magicLink)
 
     return res.status(200).json(new ApiResponse(200, {}, "Verification link sent to your Email"))
 })
@@ -454,7 +454,7 @@ const changePasswordRequest = asyncHandler(async (req, res) => {
 
     const passwordResetToken = await user.generatePasswordResetToken()
     const magicLink = `${process.env.BASE_URL}/api/users/verify-password-reset?token=${passwordResetToken}`
-    sendForgetPasswordEmail(emailToGetUserFrom, user.fullname, magicLink)
+    addForgetPasswordEmailToQueue(emailToGetUserFrom, user.fullname, magicLink)
 
     return res.status(200).json(new ApiResponse(200, {}, "Password reset link sent to your Email"))
 })
