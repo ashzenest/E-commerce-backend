@@ -1,5 +1,5 @@
 import mongoose from "mongoose"
-import { ChatRoom } from "./chatRoom.model.js"
+import { Chatroom } from "./chatroom.model.js"
 
 const messageSchema = new mongoose.Schema({
     sender: {
@@ -7,9 +7,9 @@ const messageSchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
-    chatRoom: {
+    chatroom: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "ChatRoom",
+        ref: "Chatroom",
         required: true
     },
     messageType: {
@@ -27,11 +27,11 @@ const messageSchema = new mongoose.Schema({
     }
 },{timestamps: true})
 
-messageSchema.index({ chatRoom: 1, createdAt: -1 })
+messageSchema.index({ chatroom: 1, createdAt: -1 })
 messageSchema.index({ sender: 1 })
 
 messageSchema.post("save", async function(){
-    await ChatRoom.findByIdAndUpdate(this.chatRoom, {
+    await Chatroom.findByIdAndUpdate(this.chatroom, {
         lastMessageAt: new Date()
     })
 })

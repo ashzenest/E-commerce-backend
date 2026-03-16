@@ -2,7 +2,7 @@ import { GlideClient } from "@valkey/valkey-glide";
 import Redis from "ioredis";
 
 // Two separate clients are intentional:
-// - GlideClient is used for app-level cache/auth operations (valkey-glide if official client for Valkey)
+// - GlideClient is used for app-level cache/auth operations (valkey-glide is the official client for Valkey)
 // - ioredis is used exclusively for BullMQ, because BullMQ require ioredis
 // valkey-glide does not implement the ioredis API and cannot be used with BullMQ
 

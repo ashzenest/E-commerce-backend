@@ -7,6 +7,7 @@ import categoryRouter from "./routes/category.routes.js"
 import productRouter from "./routes/product.routes.js"
 import sellerRouter from "./routes/seller.routes.js"
 import adminRouter from "./routes/admin.routes.js"
+import chatRouter from "./routes/chat.routes.js"
 import helmet from "helmet"
 import mongoSanitize from "express-mongo-sanitize"
 
@@ -32,6 +33,7 @@ app.use("/api/categories", categoryRouter)
 app.use("/api/products", productRouter)
 app.use("/api/seller", sellerRouter)
 app.use("/api/admin", adminRouter)
+app.use("/api/chat", chatRouter)
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const chatRoomSchema = new mongoose.Schema({
+const chatroomSchema = new mongoose.Schema({
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -25,17 +25,17 @@ const chatRoomSchema = new mongoose.Schema({
     }
 }, {timestamps: true})
 
-chatRoomSchema.virtual("messages", {
+chatroomSchema.virtual("messages", {
     ref: "Message",
     localField: "_id",
-    foreignField: "chatRoom"
+    foreignField: "chatroom"
 })
 
-chatRoomSchema.set("toJSON", {virtuals: true})
-chatRoomSchema.set("toObject", {virtuals: true})
+chatroomSchema.set("toJSON", {virtuals: true})
+chatroomSchema.set("toObject", {virtuals: true})
 
-chatRoomSchema.index({ createdBy: 1 })
-chatRoomSchema.index({ assignedTo: 1 })
-chatRoomSchema.index({ status: 1 })
+chatroomSchema.index({ createdBy: 1 })
+chatroomSchema.index({ assignedTo: 1 })
+chatroomSchema.index({ status: 1 })
 
-export const ChatRoom = mongoose.model("ChatRoom", chatRoomSchema)
+export const Chatroom = mongoose.model("Chatroom", chatroomSchema)
