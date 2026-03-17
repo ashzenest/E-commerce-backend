@@ -71,6 +71,13 @@ const userSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Wishlist"
     },
+    isOnline: {
+        type: Boolean,
+        default: false
+    },
+    lastOnlineAt: {
+        type: Date,
+    },
     refreshToken: {
         type: String
     }

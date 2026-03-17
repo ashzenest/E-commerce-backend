@@ -4,6 +4,9 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import { Chatroom } from "../models/chatroom.model.js"
 import { Message } from "../models/message.model.js"
 import mongoose from "mongoose"
+import { getUnreadSummary } from "../services/chatroom.service.js"
+import { getMessagesByChatroom } from "../services/message.service.js"
+import { getIO } from "../socket/index.js"
 
 const createChatroom = asyncHandler(async (req, res) => {
     const {typeRequested} = req.body
@@ -26,47 +29,19 @@ const createChatroom = asyncHandler(async (req, res) => {
         createdBy: userId,
         type
     })
-
-    //Add Socket.io emit when setting up real-time features
+    const io = getIO()
+    io.to("admins:queue").emit("new_chatroom", {
+        success: true,
+        data: { chatroom },
+        message: "New chatroom created"
+    })
 
     return res.status(201).json(new ApiResponse(201, chatroom, "Chatroom created successfully"))
 })
 
 const getUserChatrooms = asyncHandler(async (req, res) => {
     const userId = req.user._id
-    const chatrooms = await Chatroom.aggregate([
-        { $match: { createdBy: userId } }, 
-        { $lookup: {
-            from: 'messages',
-            let: { roomId: '$_id' },
-            pipeline: [
-                { $match: {
-                    $expr: {
-                        $and: [
-                            { $eq: ['$chatroom', '$$roomId'] },
-                            { $ne: ['$sender', userId] },
-                            { $eq: ['$isRead', false] }
-                        ]
-                    }
-                }},
-                { $count: 'count' }
-            ],
-            as: 'unreadMessages'
-        }},
-        
-        { $addFields: {
-            unreadCount: { 
-                $ifNull: [{ $arrayElemAt: ['$unreadMessages.count', 0] }, 0] 
-            }
-        }},
-        
-        { $project: { unreadMessages: 0 } },
-        { $sort: { lastMessageAt: -1 } }
-    ])
-    await Chatroom.populate(chatrooms, {
-        path: 'assignedTo',
-        select: 'username avatar'
-    })
+    const chatrooms = await getUnreadSummary(userId)
     return res.status(200).json(new ApiResponse(200, chatrooms, "All Chatroom fetched successfully"))
 })
 
@@ -81,6 +56,12 @@ const assignChatroomToSelf = asyncHandler(async (req, res) => {
     if(!chatroom){
         throw new ApiError(404, "Chatroom not found or already assigned")
     }
+    const io = getIO()
+    io.to(`user:${chatroom.createdBy}`).emit("chatroom_assigned", {
+        success: true,
+        data: { chatroom },
+        message: "Your chatroom has been assigned to a support agent"
+    })
     return res.status(200).json(new ApiResponse(200, chatroom, "Chatroom is assigned to you successfully"))
 })
 
@@ -95,6 +76,17 @@ const closeChatroom = asyncHandler(async (req, res) => {
     if(!chatroom){
         throw new ApiError(404, "Chatroom not found or not assigned to you")
     }
+    const io = getIO()
+    io.to(`chatroom:${chatroomId}`).emit("chatroom_closed", {
+        success: true,
+        data: { chatroom },
+        message: "Chatroom has been closed"
+    })
+    io.to(`user:${chatroom.createdBy}`).emit("chatroom_closed", {
+        success: true,
+        data: { chatroom },
+        message: "Chatroom has been closed"
+    })
     return res.status(200).json(new ApiResponse(200, chatroom, "Chatroom closed successfully"))
 })
 
@@ -149,7 +141,6 @@ const getAllChatrooms = asyncHandler(async (req, res) => {
 const getMessages = asyncHandler(async(req, res) => {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 50
-    const skip = (page - 1) * limit
 
     const {chatroomId} = req.params
     if(!mongoose.Types.ObjectId.isValid(chatroomId)){
@@ -159,17 +150,8 @@ const getMessages = asyncHandler(async(req, res) => {
     if(!chatroom){
         throw new ApiError(404, "Chatroom doesnt exist or you dont have access to it")
     }
-    const totalMessages = await Message.countDocuments({chatroom: chatroomId})
-    const messages = await Message.find({chatroom: chatroomId}).populate("sender", "username avatar").sort({createdAt: -1}).skip(skip).limit(limit)
-    return res.status(200).json(new ApiResponse(200, {
-        messages,
-        pagination: {
-            currentPage: page,
-            totalPages: Math.ceil(totalMessages / limit),
-            totalMessages,
-            limit
-        }
-    }, "Messages fetched successfully"))
+    const data = await getMessagesByChatroom(chatroomId, page, limit)
+    return res.status(200).json(new ApiResponse(200, data, "Messages fetched successfully"))
 })
 
 const markMessagesAsRead = asyncHandler(async (req, res) => {
