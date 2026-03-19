@@ -80,8 +80,9 @@ const getWithLock = async(cacheKeys, ttl, dbQuery) => {
         return cached
     }
 
+    const lockKey = `lock:${cacheKeys}`
     const lockValue = crypto.randomUUID()
-    const lockAcquired = await acquireValkeyLock(cacheKeys, lockValue, 10)
+    const lockAcquired = await acquireValkeyLock(lockKey, lockValue, 10)
     if(!lockAcquired){
         await new Promise((resolve) => setTimeout(resolve, 50))
         const cached = await cacheGet(cacheKeys)
@@ -93,8 +94,8 @@ const getWithLock = async(cacheKeys, ttl, dbQuery) => {
     }
 
     const result = await dbQuery()
-    cacheSet(cacheKeys, result, ttl)
-    await releaseValkeyLock(cacheKeys, lockValue)
+    await cacheSet(cacheKeys, result, ttl)
+    await releaseValkeyLock(lockKey, lockValue)
     return result
 }
 

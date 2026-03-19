@@ -13,5 +13,5 @@ const storage = multer.diskStorage({
 })
 
 export const upload = multer({
-    storage
+    storage//add limit and add error handler snce file exceeding limit wll throw an error
 })
