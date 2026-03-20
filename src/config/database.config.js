@@ -1,17 +1,23 @@
 import mongoose from "mongoose";
+import { logger } from "./logger.config.js";
 
 const connectDatabase = async() => {
+    logger.info("Connecting to Database")
     for(let i = 0; i<5; i++){
         try{
             await mongoose.connect(`${process.env.MONGODB_URI}/${process.env.DB_NAME}`)
-            console.log("Successfully connected to Database")
+            logger.info("Successfully connected to Database")
             return
-        }catch(error){
-            console.log(`Connection failed for ${i + 1} time`)
+        }catch(err){
+            logger.error({
+                err,
+                attempt: i + 1,
+                retryInMs: 2000 * (i + 1)
+            }, `Connection failed for ${i + 1} time`)
             await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)))
         }
     }
-    console.log("Database connection failed after maximum retries")
+    logger.catastrophe("Database connection failed after maximum retries")
     process.exit(1)
 }
 

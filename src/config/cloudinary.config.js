@@ -1,4 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
+import { logger } from "./logger.config.js";
+
+logger.info("Connecting to cloudinary")
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -7,7 +10,9 @@ cloudinary.config({
 })
 
 cloudinary.api.ping()
-    .then(() => console.log("Cloudinary connected"))
-    .catch(console.error)
+    .then(() => logger.info("Cloudinary connected"))
+    .catch((err) =>{
+        logger.catastrophe({err}, "Cloudinary failed")
+    })
 
 export {cloudinary}

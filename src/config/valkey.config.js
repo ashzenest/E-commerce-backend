@@ -1,5 +1,6 @@
 import { GlideClient } from "@valkey/valkey-glide";
 import Redis from "ioredis";
+import { logger } from "./logger.config.js";
 
 // Two separate clients are intentional:
 // - GlideClient is used for app-level cache/auth operations (valkey-glide is the official client for Valkey)
@@ -10,6 +11,7 @@ let valkeyClient = null
 let redisClient = null
 
 const connectValkey = async() => {
+    logger.info("Connecting to Valkey")
     for(let i = 0; i < 5; i++){
         try {
             valkeyClient = await GlideClient.createClient({
@@ -18,18 +20,23 @@ const connectValkey = async() => {
                     port: parseInt(process.env.VALKEY_PORT)
                 }]
             });
-            console.log("Valkey connected");
+            logger.info("Valkey connected");
             return;
-        } catch(error){
-            console.error(`Valkey connection failed attempt ${i + 1}`);
+        } catch(err){
+            logger.error({
+                err,
+                attempt: i + 1,
+                retryInMs: 2000 * (i + 1)
+            }, `Valkey connection failed attempt ${i + 1}`);
             await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
         }
     }
-    console.log("Valkey connection failed after maximum tries");
+    logger.catastrophe("Valkey connection failed after maximum tries");
     process.exit(1);
 }
 
 const connectRedis = async() =>{
+    logger.info("Connecting to Redis")
     for(let i = 0; i < 5; i++){
         try {
             redisClient = new Redis({
@@ -40,14 +47,18 @@ const connectRedis = async() =>{
                 maxRetriesPerRequest: null
             });
             await redisClient.connect()
-            console.log("Redis connected");
+            logger.info("Redis connected");
             return;
-        } catch(error){
-            console.error(`Redis connection failed attempt ${i + 1}`);
+        } catch(err){
+            logger.error({
+                err,
+                attempt: i + 1,
+                retryInMs: 2000 * (i + 1)
+            }, `Redis connection failed attempt ${i + 1}`);
             await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
         }
     }
-    console.log("Redis connection failed after maximum tries");
+    logger.catastrophe("Redis connection failed after maximum tries");
     process.exit(1);
 }
 

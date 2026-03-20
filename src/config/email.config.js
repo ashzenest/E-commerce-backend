@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer"
+import { logger } from "./logger.config.js";
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -11,11 +12,11 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('Error connecting to email server:', error);
+transporter.verify((err, success) => {
+  if (err) {
+    logger.catastrophe({err}, 'Error connecting to email server');
   } else {
-    console.log('Email server is ready to send messages');
+    logger.info('Email server is ready to send messages');
   }
 });
 
