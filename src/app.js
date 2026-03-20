@@ -10,11 +10,15 @@ import adminRouter from "./routes/admin.routes.js"
 import chatRouter from "./routes/chat.routes.js"
 import helmet from "helmet"
 import mongoSanitize from "express-mongo-sanitize"
+import pinoHttp from "pino-http"
+import { logger } from "./config/logger.config.js"
+import { errorMiddleware } from "./middlewares/error.middleware.js"
 
 const app = express()
 
 app.use(helmet())
-// app.use(mongoSanitize())
+app.use(pinoHttp({logger}))
+app.use(mongoSanitize())
 
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
@@ -35,15 +39,6 @@ app.use("/api/seller", sellerRouter)
 app.use("/api/admin", adminRouter)
 app.use("/api/chat", chatRouter)
 
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500
-  const message = err.message || "Internal Server Error"
-  
-  res.status(statusCode).json({
-    success: false,
-    message,
-    errors: err.errors || []
-  })
-})
+app.use(errorMiddleware)
 
 export {app}
