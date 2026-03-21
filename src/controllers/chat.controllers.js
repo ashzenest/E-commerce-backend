@@ -9,6 +9,12 @@ import { getMessagesByChatroom } from "../services/message.service.js"
 import { getIO } from "../socket/index.js"
 
 const createChatroom = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "chat",
+        operation: "createChatroom",
+        userId: req.user._id,
+    })
+    log.info("Create chatroom started")
     const {typeRequested} = req.body
     const userId = req.user._id
 
@@ -36,16 +42,32 @@ const createChatroom = asyncHandler(async (req, res) => {
         message: "New chatroom created"
     })
 
+    log.info("Chatroom created successfully")
     return res.status(201).json(new ApiResponse(201, chatroom, "Chatroom created successfully"))
 })
 
 const getUserChatrooms = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "chat",
+        operation: "getUserChatrooms",
+        userId: req.user._id
+    })
+    log.info("Fetch user chatrooms started")
     const userId = req.user._id
     const chatrooms = await getUnreadSummary(userId)
+
+    log.info("All Chatroom fetched successfully")
     return res.status(200).json(new ApiResponse(200, chatrooms, "All Chatroom fetched successfully"))
 })
 
 const assignChatroomToSelf = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "chat",
+        operation: "assignChatroomToSelf",
+        userId: req.user._id,
+        resourceId: req.params.chatroomId
+    })
+    log.info("Assign chatroom to self started")
     const {chatroomId} = req.params
     if(!mongoose.Types.ObjectId.isValid(chatroomId)){
         throw new ApiError(400, "Invalid Chatroom Id")
@@ -62,10 +84,18 @@ const assignChatroomToSelf = asyncHandler(async (req, res) => {
         data: { chatroom },
         message: "Your chatroom has been assigned to a support agent"
     })
+    log.info("Chatroom is assigned to you successfully")
     return res.status(200).json(new ApiResponse(200, chatroom, "Chatroom is assigned to you successfully"))
 })
 
 const closeChatroom = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "chat",
+        operation: "closeChatroom",
+        userId: req.user._id,
+        resourceId: req.params.chatroomId
+    })
+    log.info("Close chatroom started")
     const {chatroomId} = req.params
     if(!mongoose.Types.ObjectId.isValid(chatroomId)){
         throw new ApiError(400, "Invalid Chatroom Id")
@@ -87,10 +117,17 @@ const closeChatroom = asyncHandler(async (req, res) => {
         data: { chatroom },
         message: "Chatroom has been closed"
     })
+    log.info("Chatroom closed successfully")
     return res.status(200).json(new ApiResponse(200, chatroom, "Chatroom closed successfully"))
 })
 
 const getAllChatrooms = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "chat",
+        operation: "getAllChatrooms",
+        userId: req.user._id
+    })
+    log.info("Fetch all chatroom started")
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 20
     const skip = (page - 1) * limit
@@ -127,6 +164,7 @@ const getAllChatrooms = asyncHandler(async (req, res) => {
     const totalChatrooms = await Chatroom.countDocuments(filter)
     const chatrooms = await Chatroom.find(filter).sort({lastMessageAt: -1, createdAt: -1}).populate("createdBy", "username avatar").populate("assignedTo", "username avatar").skip(skip).limit(limit)
 
+    log.info("All chatrooms fetched successfully")
     return res.status(200).json(new ApiResponse(200, {
         chatrooms,
         pagination: {
@@ -139,6 +177,13 @@ const getAllChatrooms = asyncHandler(async (req, res) => {
 })
 
 const getMessages = asyncHandler(async(req, res) => {
+    const log = req.log.child({
+        module: "chat",
+        operation: "getMessages",
+        userId: req.user._id,
+        resourceId: req.params.chatroomId
+    })
+    log.info("Fetch message started")
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 50
 
@@ -151,10 +196,18 @@ const getMessages = asyncHandler(async(req, res) => {
         throw new ApiError(404, "Chatroom doesnt exist or you dont have access to it")
     }
     const data = await getMessagesByChatroom(chatroomId, page, limit)
+    log.info("Messages fetched successfully")
     return res.status(200).json(new ApiResponse(200, data, "Messages fetched successfully"))
 })
 
 const markMessagesAsRead = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "chat",
+        operation: "markMessagesAsRead",
+        userId: req.user._id,
+        resourceId: req.params.chatroomId
+    })
+    log.info("Mark message as read started")
     const {chatroomId} = req.params
     if(!mongoose.Types.ObjectId.isValid(chatroomId)){
         throw new ApiError(400, "Invalid Chatroom Id")
@@ -166,6 +219,7 @@ const markMessagesAsRead = asyncHandler(async (req, res) => {
     await Message.updateMany({chatroom: chatroomId, sender: {$ne: req.user._id}, isRead: false}, {
         $set: {isRead: true}
     })
+    log.info("Messages marked as read successfully")
     return res.status(200).json(new ApiResponse(200, {}, "Messages marked as read successfully"))
 })
 

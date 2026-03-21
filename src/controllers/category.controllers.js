@@ -7,6 +7,12 @@ import { cacheDel, getWithLock } from "../services/valkey.service.js";
 import { CacheKeys } from "../utils/cacheKeys.js";
 
 const createCategory = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "category",
+        operation: "createCategory",
+        userId: req.user._id
+    })
+    log.info("Create category started")
     const {name, description} = req.body
     if(!name || !name.trim()){
         throw new ApiError(400, "Category name is required")
@@ -20,10 +26,18 @@ const createCategory = asyncHandler(async (req, res) => {
 
     await cacheDel(CacheKeys.allCategory())
     
+    log.info("Category created successfully")
     return res.status(201).json(new ApiResponse(201, category, "Category created successfully"))
 })
 
 const updateCategory = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "category",
+        operation: "updateCategory",
+        userId: req.user._id,
+        resourceId: req.params.categoryId
+    })
+    log.info("Update category started")
     const {categoryId} = req.params
     const {name, description} = req.body
 
@@ -56,10 +70,18 @@ const updateCategory = asyncHandler(async (req, res) => {
     await cacheDel(CacheKeys.category(categoryId))
     await cacheDel(CacheKeys.allCategory())
     
+    log.info("Category updated successfully")
     return res.status(200).json(new ApiResponse(200, category, "Category updated successfully"))
 })
 
 const deleteCategory = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "category",
+        operation: "deleteCategory",
+        userId: req.user._id,
+        resourceId: req.params.categoryId
+    })
+    log.info("Delete category started")
     const {categoryId} = req.params
     if(!mongoose.Types.ObjectId.isValid(categoryId)){
         throw new ApiError(400, "Invalid Category Id format")
@@ -72,17 +94,32 @@ const deleteCategory = asyncHandler(async (req, res) => {
     await cacheDel(CacheKeys.category(categoryId))
     await cacheDel(CacheKeys.allCategory())
 
+    log.info("Category deleted successfully")
     return res.status(200).json(new ApiResponse(200, {}, "Category deleted successfully"))
 })
 
 const getAllCategories = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "category",
+        operation: "getAllCategories",
+        userId: req.user?._id
+    })
+    log.info("Fetch all categories started")
     const categories = await getWithLock(CacheKeys.allCategory(), 60*60*12, () => {
         return Category.find()
     })
+    log.info("Categories fetched successfully")
     return res.status(200).json(new ApiResponse(200, categories, "Categories fetched successfully"))
 })
 
 const getCategoryById = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "category",
+        operation: "getCategoryById",
+        userId: req.user?._id,
+        resourceId: req.params.categoryId
+    })
+    log.info("Fetch category started")
     const {categoryId} = req.params
     if(!mongoose.Types.ObjectId.isValid(categoryId)){
         throw new ApiError(400, "Invalid Category Id format")
@@ -95,6 +132,7 @@ const getCategoryById = asyncHandler(async (req, res) => {
     if(!category){
         throw new ApiError(404, "Category not found")
     }
+    log.info("Category fetched successfully")
     return res.status(200).json(new ApiResponse(200, category, "Category fetched successfully"))
 })
 

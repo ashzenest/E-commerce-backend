@@ -11,6 +11,12 @@ import { CacheKeys } from "../utils/cacheKeys.js";
 
 //ADD CACHING HERE TOO
 const getMyProducts = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "seller",
+        operation: "getMyProducts",
+        userId: req.user._id
+    })
+    log.info("Fetch seller's product started")
     const filter = {
         seller: req.user._id
     }
@@ -64,6 +70,7 @@ const getMyProducts = asyncHandler(async (req, res) => {
     const totalProducts = await Product.countDocuments(filter)
     const products = await Product.find(filter).sort(sort).skip(skip).limit(limit).populate("category", "name")
 
+    log.info("Seller's products fetched successfully")
     return res.status(200).json(new ApiResponse(200, {
         products,
         pagination: {
@@ -77,6 +84,13 @@ const getMyProducts = asyncHandler(async (req, res) => {
 })
 
 const updateStock = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "seller",
+        operation: "updateStock",
+        userId: req.user._id,
+        resourceId: req.params.productId
+    })
+    log.info("Update stock started")
     const {productId} = req.params
     const {quantity, operation} = req.body
 
@@ -118,10 +132,17 @@ const updateStock = asyncHandler(async (req, res) => {
     await cacheDel(CacheKeys.product(productId))
     await invalidateSellerProductsCache(product.seller)
     
+    log.info("Product's stock updated successfully")
     return res.status(200).json(new ApiResponse(200, product, "Product's stock updated successfully"))
 })
 
 const getMyOrders = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "seller",
+        operation: "getMyOrders",
+        userId: req.user._id
+    })
+    log.info("Fetch seller orders started")
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 20
     const skip = (page - 1) * limit
@@ -189,6 +210,7 @@ const getMyOrders = asyncHandler(async (req, res) => {
     
     const totalOrders = await Order.countDocuments(filter)
     const orders = await Order.find(filter).sort(sort).skip(skip).limit(limit)
+    log.info("Orders fetched successfully")
     return res.status(200).json(new ApiResponse(200, {
         orders,
         pagination: {
@@ -201,6 +223,12 @@ const getMyOrders = asyncHandler(async (req, res) => {
 })
 
 const getDashboardStats = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "seller",
+        operation: "getDashboardStats",
+        userId: req.user._id
+    })
+    log.info("Fetch dashboard started")
     const filter = {
         "products.seller": req.user._id
     }
@@ -292,6 +320,8 @@ const getDashboardStats = asyncHandler(async (req, res) => {
         }
     ])
     const totalRevenues = totalRevenuesResult[0]?.total || 0
+
+    log.info("Dashboard stats fetched successfully")
     return res.status(200).json(new ApiResponse(200, {
         totalOrders,
         totalRevenues,

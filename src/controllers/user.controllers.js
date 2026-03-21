@@ -17,10 +17,16 @@ import { loginUserRateLimiter, forgotPasswordUserRateLimiter, emailChangeUserRat
 import { CacheKeys } from "../utils/cacheKeys.js";
 import { addChangeEmailRequestToQueue, addForgetPasswordEmailToQueue, addSendRegistrationEmailToQueue } from "../queues/producers/email.producer.js"
 import { addDeleteFromCloudinary } from "../queues/producers/cloudinary.producer.js"
+import { logger } from "../config/logger.config.js"
 
 //ONLY ACCEPT STRING AS INPUT
 
 const generateAccessAndRefreshToken = async (userId) => {
+    const log = logger.child({
+        module: "user",
+        operation: "generateAccessAndRefreshToken",
+        userId
+    })
     try {
         const user = await User.findById(userId)
         const accessToken = user.generateAccessToken()
@@ -32,12 +38,18 @@ const generateAccessAndRefreshToken = async (userId) => {
             accessToken,
             refreshToken
         }
-    } catch (error) {
-        throw new ApiError(500, "Something went wrong while generating access and refresh token")
+    } catch (err) {
+        log.error({err}, "Something went wrong while generating access and refresh token")
+        throw err
     }
 }
 
 const registerUser = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "registerUser",
+    })
+    log.info("Register user started")
     const {username, fullname, email, password} = req.body
 
     const existingUser = await User.findOne({
@@ -62,11 +74,13 @@ const registerUser = asyncHandler(async (req, res) => {
         password,
         avatar: avatar?.url || "https://res.cloudinary.com/ashzenest/image/upload/v1770836588/defaultuser_lnxhcy.jpg"
         })
-    }catch(error){
-        if(error.name === "ValidationError"){
-            throw new ApiError(400, error.message)
+    }catch(err){
+        if(avatar?.url){
+            log.warn("User creation failed, rolling back avatar upload")
+            const publicId = extractPublicId(avatar?.url)
+            addDeleteFromCloudinary(publicId)
         }
-        throw new ApiError(500, "Could not create the user")
+        throw err
     }
     
     const createdUser = await User.findById(user._id).select("-refreshToken")
@@ -75,10 +89,16 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Something went wrong while registering the user")
     }
     addSendRegistrationEmailToQueue(createdUser.email, createdUser.fullname)
+    log.info("User registered successfully")
     return res.status(201).json(new ApiResponse(201, createdUser, "User registered successfully"))
 })
 
 const loginUser = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "loginUser"
+    })
+    log.info("Login user started")
     const {username, email, password} = req.body
 
     if (!username && !email) {
@@ -105,10 +125,17 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id)
 
+    log.info("Login successfull")
     return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).json(new ApiResponse(200, {}, "Login successfull"))
 })
 
 const logoutUser = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "logoutUser",
+        userId: req.user._id
+    })
+    log.info("Logout user started")
     await User.findByIdAndUpdate(req.user._id,
         {
             $set: {
@@ -119,10 +146,16 @@ const logoutUser = asyncHandler(async (req, res) => {
     const ttl = calculateRemainingTTL(req.decodedToken.exp)
     await blacklistToken(req.user._id, req.token, ttl)
 
+    log.info("User logged out successfully")
     return res.status(200).clearCookie("accessToken", options).clearCookie("refreshToken", options).json(new ApiResponse(200, {}, "User logged out successfully"))  
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "refreshAccessToken"
+    })
+    log.info("Refresh access token started")
     const token = req.cookies?.refreshToken || req.header("Authorization")?.replace("Bearer ", "")
     if(!token){
         throw new ApiError(401, "Invalid refresh token")
@@ -143,11 +176,17 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
     const {accessToken, refreshToken} = await generateAccessAndRefreshToken(decodedToken._id)
 
-    return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).json(new ApiResponse(200, {}, "Refresh access token successfull"))
+    log.info("Access token refreshed successfully")
+    return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).json(new ApiResponse(200, {}, "Access token refreshed successfully"))
 })
 
 const changeCurrentPassword = asyncHandler(async(req, res) => {
-
+    const log = req.log.child({
+        module: "user",
+        operation: "changeCurrentPassword",
+        userId: req.user._id
+    })
+    log.info("Change current password started")
     const {oldPassword, newPassword} = req.body
 
     if(!oldPassword || !newPassword){
@@ -167,20 +206,19 @@ const changeCurrentPassword = asyncHandler(async(req, res) => {
 
     user.password = newPassword
     user.refreshToken = null
-
-    try {
-        await user.save()
-    } catch (error) {
-        if(error.name === "ValidationError"){
-            throw new ApiError(400, error.message)
-        }
-        throw new ApiError(500, "Could not change password")
-    }
+    await user.save()
     
+    log.info("Password changed successfully. Please login again.")
     return res.status(200).clearCookie("accessToken", options).clearCookie("refreshToken", options).json(new ApiResponse(200, {}, "Password changed successfully. Please login again."))
 })
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "updateUserAvatar",
+        userId: req.user._id
+    })
+    log.info("Update user avatar started")
     const avatarLocalPath = req.file?.path
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar required")
@@ -207,10 +245,17 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
     await cacheDel(CacheKeys.userProfile(req.user._id))
 
+    log.info("Avatar changed successfully")
     return res.status(200).json(new ApiResponse(200, user, "Avatar changed successfully"))
 })
 
 const updateFullname = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "updateFullname",
+        userId: req.user._id
+    })
+    log.info("Update fullname started")
     const {newFullname} = req.body
 
     if(!newFullname || !newFullname.trim()){
@@ -224,15 +269,22 @@ const updateFullname = asyncHandler(async (req, res) => {
 
     await cacheDel(CacheKeys.userProfile(req.user._id))
 
-    return res.status(200).json(new ApiResponse(200, user, "fullname changed successfully"))
+    log.info("Fullname changed successfully")
+    return res.status(200).json(new ApiResponse(200, user, "Fullname changed successfully"))
 })
 
 const usernameAvailableOrNot = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "usernameAvailableOrNot"
+    })
+    log.info("Check username available or not")
     const {username} = req.query
      if (!username) {
         throw new ApiError(400, "Username is required")
     }
     const available = await User.findOne({username})
+    log.info("Check username available or not finished")
     if(available){
         return res.status(200).json(new ApiResponse(200, {available: false}, "Username is already taken"))
     } else {
@@ -241,6 +293,12 @@ const usernameAvailableOrNot = asyncHandler(async (req, res) => {
 })
 
 const changeUsername = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "changeUsername",
+        userId: req.user._id
+    })
+    log.info("Change username started")
     const {username, password} = req.body
     const newUsername = username?.trim()
 
@@ -268,24 +326,24 @@ const changeUsername = asyncHandler(async (req, res) => {
 
     user.username = newUsername
 
-    try{
-        await user.save()
-    }catch(error){
-        if(error.name === "ValidationError"){
-            throw new ApiError(400, error.message)
-        }
-        throw new ApiError(500, "Could not change the username")
-    }
+    await user.save()
 
     const updatedUser = await User.findById(req.user._id).select("-refreshToken")
 
     await cacheDel(CacheKeys.userProfile(req.user._id))
 
+    log.info("Username changed successfully")
     return res.status(200).json(new ApiResponse(200, updatedUser, "Username changed successfully"))
 
 })
 
 const changeEmailRequest = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "changeEmailRequest",
+        userId: req.user._id
+    })
+    log.info("Change email request started")
     await emailChangeUserRateLimiter(req.user._id)
     const {email} = req.body
 
@@ -315,10 +373,16 @@ const changeEmailRequest = asyncHandler(async (req, res) => {
 
     addChangeEmailRequestToQueue(newEmail, req.user.fullname, magicLink)
 
+    log.info("Verification link sent to user's Email")
     return res.status(200).json(new ApiResponse(200, {}, "Verification link sent to your Email"))
 })
 
 const verifychangeEmailRequest = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module:    "user",
+        operation: "verifychangeEmailRequest"
+    })
+    log.info("Email change verification started")
     const {token} = req.query
     if(!token){
         throw new ApiError(400, "Token is required")
@@ -348,21 +412,34 @@ const verifychangeEmailRequest = asyncHandler(async (req, res) => {
     }
 
     await cacheDel(CacheKeys.userProfile(decodedToken._id))
-    
+    log.info("Email changed successfully")
     return res.status(200).json(new ApiResponse(200, user, "Email changed successfully"))
-})
+})//todo - need to trace this using trace id or something
 
 const getCurrentUser = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "getCurrentUser",
+        userId: req.user._id
+    })
+    log.info("Fetch current user started")
     const user = await getWithLock(CacheKeys.userProfile(req.user._id), 60*60, () => {
         return User.findById(req.user._id).select("-refreshToken -orders -wishlist -products")
         })
     if(!user){
         throw new ApiError(404, "User not found")
     }
+    log.info("User fetched successfully")
     return res.status(200).json(new ApiResponse(200, user, "User fetched successfully"))
 })
 
 const getWishlist = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "getWishlist",
+        userId: req.user._id
+    })
+    log.info("Fetch wishlist started")
     const user = await User.findById(req.user._id).select("wishlist")
         .populate({
             path: "wishlist",
@@ -373,10 +450,17 @@ const getWishlist = asyncHandler(async (req, res) => {
     if(!user){
         throw new ApiError(404, "User not found")
     }
+    log.info("Wishlist fetched successfully")
     return res.status(200).json(new ApiResponse(200, user, "Wishlist fetched successfully"))
 })
 
 const getOrders = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "getOrders",
+        userId: req.user._id
+    })
+    log.info("Fetch user's order started")
     const user = await User.findById(req.user._id).select("orders")
         .populate({
             path: "orders",
@@ -387,11 +471,19 @@ const getOrders = asyncHandler(async (req, res) => {
     if(!user){
         throw new ApiError(404, "User not found")
     }
+    log.info("Orders fetched successfully")
     return res.status(200).json(new ApiResponse(200, user, "Orders fetched successfully"))
 })
 
 const addToWishlist = asyncHandler(async (req, res) => {
-    const {productId} = req.query
+    const log = req.log.child({
+        module: "user",
+        operation: "addToWishlist",
+        userId: req.user._id,
+        resourceId: req.params.productId
+    })
+    log.info("Add to wishlist started")
+    const {productId} = req.params
     if(!mongoose.Types.ObjectId.isValid(productId)){
         throw new ApiError(400, "Invalid Product ID format")
     }
@@ -405,11 +497,19 @@ const addToWishlist = asyncHandler(async (req, res) => {
         },
         {upsert: true, new: true, setDefaultsOnInsert: true}
     )
+    log.info("Added to wishlist")
     return res.status(200).json(new ApiResponse(200, wishlist, "Added to wishlist"))
 })
 
 const removeFromWishlist = asyncHandler(async (req, res) => {
-    const {productId} = req.query
+    const log = req.log.child({
+        module: "user",
+        operation: "removeFromWishlist",
+        userId: req.user._id,
+        resourceId: req.params.productId
+    })
+    log.info("Remove from wishlist started")
+    const {productId} = req.params
     if(!mongoose.Types.ObjectId.isValid(productId)){
         throw new ApiError(400, "Invalid Product ID format")
     }
@@ -425,10 +525,18 @@ const removeFromWishlist = asyncHandler(async (req, res) => {
         },
         {new: true}
     )
+    log.info("Removed from wishlist")
     return res.status(200).json(new ApiResponse(200, wishlist, "Removed from wishlist"))
 })
 
 const getOrderById = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "getOrderById",
+        userId: req.user._id,
+        resourceId: req.params.orderId
+    })
+    log.info("Fetch order by id started")
     const {orderId} = req.params
     if(!mongoose.Types.ObjectId.isValid(orderId)){
         throw new ApiError(400, "Invalid Order Id format")
@@ -437,10 +545,16 @@ const getOrderById = asyncHandler(async (req, res) => {
     if(!order){
         throw new ApiError(404, "Order not found")
     }
+    log.info("Order fetched successfully")
     return res.status(200).json(new ApiResponse(200, order, "Order fetched successfully"))
 })
 
 const changePasswordRequest = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "changePasswordRequest"
+    })
+    log.info("Change password request started")
     const {email} = req.body
     const emailToGetUserFrom = email?.trim()
     if(!emailToGetUserFrom){
@@ -457,10 +571,16 @@ const changePasswordRequest = asyncHandler(async (req, res) => {
     const magicLink = `${process.env.BASE_URL}/api/users/verify-password-reset?token=${passwordResetToken}`
     addForgetPasswordEmailToQueue(emailToGetUserFrom, user.fullname, magicLink)
 
+    log.info("Password reset link sent to your Email")
     return res.status(200).json(new ApiResponse(200, {}, "Password reset link sent to your Email"))
 })
 
 const verifyChangePasswordRequest = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module:    "user",
+        operation: "verifyChangePasswordRequest"
+    })
+    log.info("Password reset verification started")
     const {token} = req.query
     const {password} = req.body
     const newPassword = password?.trim()
@@ -483,20 +603,21 @@ const verifyChangePasswordRequest = asyncHandler(async (req, res) => {
     }
     user.password = newPassword
     user.refreshToken = null
-    try {
-        await user.save()
-    } catch (error) {
-        if(error.name === "ValidationError"){
-            throw new ApiError(400, error.message)
-        }
-        throw new ApiError(500, "Could not reset password")
-    }
+    await user.save()
 
+    log.info("Password reset successfully")
     return res.status(200).json(new ApiResponse(200, {}, "Password reset successfully"))
 })
 
 const getReviews = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "user",
+        operation: "getReviews",
+        userId: req.user._id
+    })
+    log.info("Fetch user's review started")
     const reviews = await Review.find({user: req.user._id}).populate("product", "name seller").sort({createdAt: -1})
+    log.info("User's review fetched successfully")
     return res.status(200).json(new ApiResponse(200, reviews, "User's review fetched successfully"))
 })
 

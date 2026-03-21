@@ -12,6 +12,13 @@ import { CacheKeys } from "../utils/cacheKeys.js";
 import { addDeleteFromCloudinary } from "../queues/producers/cloudinary.producer.js";
 
 const createProduct = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "product",
+        operation: "createProduct",
+        userId: req.user._id
+    })
+    log.info("Create product started")
+
     const {name, price, description, stock, brand, category} = req.body
     const imagePaths = req.files
     const sellerId = req.user._id
@@ -43,6 +50,7 @@ const createProduct = asyncHandler(async (req, res) => {
     for(const file of imagePaths){
         const cloudinaryLink = await uploadOnCloudinary(file.path)
         if(!cloudinaryLink){
+            log.warn("Failed to upload all the images to cloudinary, rolling back")
             for(const link of cloudinaryLinks){
                 const publicId = extractPublicId(link)
                 addDeleteFromCloudinary(publicId)
@@ -74,7 +82,7 @@ const createProduct = asyncHandler(async (req, res) => {
             }, {session})
 
         await session.commitTransaction();
-    } catch (error) {
+    } catch (err) {
         await session.abortTransaction();
 
         for(const link of cloudinaryLinks){
@@ -82,17 +90,25 @@ const createProduct = asyncHandler(async (req, res) => {
             addDeleteFromCloudinary(publicId)
         }
 
-        throw new ApiError(500, "Transaction failed: " + error.message)
+        log.error({err}, "Product creation failed, rolling back cloudinary uploads")
+        throw new ApiError(500, "Transaction failed: " + err.message)
     } finally {
         session.endSession();
     }
 
     await invalidateSellerProductsCache(req.user._id)
-    
+    log.info("Product created sucessfully")
     return res.status(201).json(new ApiResponse(201, product[0], "Product created sucessfully"))
 })
 
 const deleteProduct = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "product",
+        operation: "deleteProduct",
+        userId: req.user._id,
+        resourceId: req.params.productId
+    })
+    log.info("Delete product started")
     const {productId} = req.params
     if(!mongoose.Types.ObjectId.isValid(productId)){
         throw new ApiError(400, "Invalid Product Id format")
@@ -109,10 +125,18 @@ const deleteProduct = asyncHandler(async (req, res) => {
     await cacheDel(CacheKeys.product(productId))
     await invalidateSellerProductsCache(product.seller)
 
+    log.info("Product deleted successfully")
     return res.status(200).json(new ApiResponse(200, {}, "Product deleted successfully"))
 })
 
 const getProductById = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "product",
+        operation: "getProductById",
+        userId: req.user?._id,
+        resourceId: req.params.productId
+    })
+    log.info("Fetch product started")
     const {productId} = req.params
     if(!mongoose.Types.ObjectId.isValid(productId)){
         throw new ApiError(400, "Invalid Product Id format")
@@ -126,10 +150,18 @@ const getProductById = asyncHandler(async (req, res) => {
     if(!product){
         throw new ApiError(404, "Product not found")
     }
+    log.info("Product fetched successfully")
     return res.status(200).json(new ApiResponse(200, product, "Product fetched successfully"))
 })
 
 const updateProduct = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "product",
+        operation: "updateProduct",
+        userId: req.user._id,
+        resourceId: req.params.productId
+    })
+    log.info("Update product started")
     const {productId} = req.params
     const {name, price, description, status, brand, category} = req.body
     const imagePaths = req.files
@@ -171,6 +203,7 @@ const updateProduct = asyncHandler(async (req, res) => {
         for(const file of imagePaths){
             const cloudinaryLink = await uploadOnCloudinary(file.path)
             if(!cloudinaryLink){
+                log.warn("Failed to upload all the images to cloudinary, rolling back")
                 for(const link of cloudinaryLinks){
                     const publicId = extractPublicId(link)
                     addDeleteFromCloudinary(publicId)
@@ -200,21 +233,30 @@ const updateProduct = asyncHandler(async (req, res) => {
                 addDeleteFromCloudinary(publicId)
             }
         }
-    } catch (error) {
+    } catch (err) {
+        log.error({err}, "Product update failed, rolling back cloudinary uploads")
         for(const link of cloudinaryLinks){
             const publicId = extractPublicId(link)
             addDeleteFromCloudinary(publicId)
         }
-        throw new ApiError(500, "Transaction failed: " + error.message)
+        throw new ApiError(500, "Transaction failed: " + err.message)
     }
 
     await cacheDel(CacheKeys.product(productId))
     await invalidateSellerProductsCache(product.seller)
 
+    log.info("Product updated successfully")
     return res.status(200).json(new ApiResponse(200, updatedProduct, "Product updated successfully"))
 })
 
 const getProductsBySeller = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "product",
+        operation: "getProductsBySeller",
+        userId: req.user?._id,
+        resourceId: req.params.sellerId
+    })
+    log.info("Fetch seller product started")
     const {sellerId} = req.params
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 20
@@ -226,39 +268,14 @@ const getProductsBySeller = asyncHandler(async (req, res) => {
     const data = await getWithLock(CacheKeys.productsBySellers(sellerId, page), 60*60*5, async () => {
         const totalProducts = await Product.countDocuments({seller: sellerId})
         const products = await Product.find({seller: sellerId}).skip(skip).limit(limit)
+                                .populate("seller", "username fullname avatar")
+                                .populate("category", "name description")
         return {totalProducts, products}
     })
 
     const {totalProducts, products} = data
-
-    // const product = await getWithLock(CacheKeys.productsBySellers(sellerId), 60*60*5, () => {
-    //     return Product.findById(sellerId)
-    //             .populate("seller", "username fullname avatar")
-    //             .populate("category", "name description")
-    // })
     
-    // const cached = await cacheGet(CacheKeys.productsBySellers(sellerId, page))
-    // if(cached){
-    //     const {totalProducts, products} = cached
-    //     return res.status(200)
-    //     .json(new ApiResponse(200,
-    //         {
-    //             products,
-    //             pagination: {
-    //                 currentPage: page,
-    //                 totalPages: Math.ceil(totalProducts / limit),
-    //                 totalProducts
-    //             }
-    //     }, "Products fetched successfully"))
-    // }
-
-    // const totalProducts = await Product.countDocuments({seller: sellerId})
-    // const products = await Product.find({seller: sellerId})
-    //     .skip(skip)
-    //     .limit(limit)
-
-    // cacheSet(CacheKeys.productsBySellers(sellerId, page), {totalProducts, products}, 60*60*5)
-
+    log.info("Products fetched successfully")
     return res.status(200)
         .json(new ApiResponse(200,
             {
@@ -273,6 +290,12 @@ const getProductsBySeller = asyncHandler(async (req, res) => {
 
 //ADD CACHING HERE
 const getAllProducts = asyncHandler(async( req, res) => {
+    const log = req.log.child({
+        module: "product",
+        operation: "getAllProducts",
+        userId: req.user?._id
+    })
+    log.info("Fetch all products started")
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 20
     const skip = (page - 1) * limit
@@ -316,6 +339,7 @@ const getAllProducts = asyncHandler(async( req, res) => {
         .populate("category", "name")
         .populate("seller", "username fullname")
 
+    log.info("Products fetched successfully")
     return res.status(200).json(new ApiResponse(200, {
         products,
         pagination: {

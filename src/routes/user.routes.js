@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {addToWishlist, changeCurrentPassword, changeEmailRequest, changePasswordRequest, changeUsername, getCurrentUser, getOrders, getReviews, getWishlist, loginUser, logoutUser, refreshAccessToken, registerUser, removeFromWishlist, updateFullname, updateUserAvatar, usernameAvailableOrNot, verifychangeEmailRequest, verifyChangePasswordRequest} from "../controllers/user.controllers.js"
+import {addToWishlist, changeCurrentPassword, changeEmailRequest, changePasswordRequest, changeUsername, getCurrentUser, getOrderById, getOrders, getReviews, getWishlist, loginUser, logoutUser, refreshAccessToken, registerUser, removeFromWishlist, updateFullname, updateUserAvatar, usernameAvailableOrNot, verifychangeEmailRequest, verifyChangePasswordRequest} from "../controllers/user.controllers.js"
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { blacklistCheck } from "../middlewares/blacklist.middleware.js";
@@ -27,7 +27,7 @@ router.route("/me").get(getCurrentUser)
 router.route("/me/reviews").get(getReviews)
 router.route("/me/get-wishlist").get(getWishlist)
 router.route("/me/get-orders").get(getOrders)
-router.route("/add-to-wishlist").post(addToWishlist)
-router.route("/remove-from-wishlist").post(removeFromWishlist)
-
+router.route("/add-to-wishlist/:productId").post(addToWishlist)
+router.route("/remove-from-wishlist/:productId").post(removeFromWishlist)
+router.route("/me/orders/:orderId").get(getOrderById)
 export default router

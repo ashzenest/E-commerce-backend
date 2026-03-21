@@ -15,6 +15,12 @@ import { CacheKeys } from "../utils/cacheKeys.js";
 import { addDeleteFromCloudinary } from "../queues/producers/cloudinary.producer.js";
 
 const getAllUsers = asyncHandler(async(req, res) => {
+    const log = req.log.child({
+        module: "admin",
+        operation: "getAllUsers",
+        userId: req.user._id
+    })
+    log.info("Fetch all user started")
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 20
     const skip = (page - 1) * limit
@@ -64,6 +70,7 @@ const getAllUsers = asyncHandler(async(req, res) => {
     }
     const totalUsers = await User.countDocuments(filter)
     const users = await User.find(filter).sort(sort).skip(skip).limit(limit).select("-refreshToken")
+    log.info("Users fetched successfully")
     return res.status(200).json(new ApiResponse(200,
         {
             users,
@@ -78,6 +85,13 @@ const getAllUsers = asyncHandler(async(req, res) => {
 })
 
 const getUserById = asyncHandler(async(req, res) => {
+    const log = req.log.child({
+        module: "admin",
+        operation: "getUserById",
+        userId: req.user._id,
+        resourceId: req.params.userId
+    })
+    log.info("Fetch user started")
     const {userId} = req.params
     if(!mongoose.Types.ObjectId.isValid(userId)){
         throw new ApiError(400, "Invalid User Id format")
@@ -89,10 +103,18 @@ const getUserById = asyncHandler(async(req, res) => {
         throw new ApiError(404, "User not found")
     }
 
+    log.info("User fetched successfully")
     return res.status(200).json(new ApiResponse(200, user, "User fetched successfully"))
 })
 
 const deleteProduct = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "admin",
+        operation: "deleteProduct",
+        userId: req.user._id,
+        resourceId: req.params.productId
+    })
+    log.info("Delete product started")
     const {productId} = req.params
     if(!mongoose.Types.ObjectId.isValid(productId)){
         throw new ApiError(400, "Invalid Product Id format")
@@ -109,10 +131,18 @@ const deleteProduct = asyncHandler(async (req, res) => {
     await cacheDel(CacheKeys.product(productId))
     await invalidateSellerProductsCache(product.seller)
 
+    log.info("Product deleted successfully")
     return res.status(200).json(new ApiResponse(200, {}, "Product deleted successfully"))
 })
 
 const updateProduct = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "admin",
+        operation: "updateProduct",
+        userId: req.user._id,
+        resourceId: req.params.productId
+    })
+    log.info("Update product started")
     const {productId} = req.params
     const {name, description, status, category} = req.body
 
@@ -153,10 +183,19 @@ const updateProduct = asyncHandler(async (req, res) => {
     await cacheDel(CacheKeys.product(productId))
     await invalidateSellerProductsCache(product.seller)
 
+    log.info("Product updated successfully")
     return res.status(200).json(new ApiResponse(200, product, "Product updated successfully"))
 })
 
 const deleteReview = asyncHandler(async(req, res) => {
+    const log = req.log.child({
+        module: "admin",
+        operation: "deleteReview",
+        userId: req.user._id,
+        resourceId: req.params.reviewId
+    })
+    log.info("Delete review started")
+    
     const {reviewId} = req.params
     if(!mongoose.Types.ObjectId.isValid(reviewId)){
         throw new ApiError(400, "Invalid Review Id format")
@@ -165,10 +204,18 @@ const deleteReview = asyncHandler(async(req, res) => {
     if(!review){
         throw new ApiError(404, "Review not found")
     }
+    log.info("Review deleted successfully")
     return res.status(200).json(new ApiResponse(200, {}, "Review deleted successfully"))
 })
 
 const getOrderById = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "admin",
+        operation: "getOrderById",
+        userId: req.user._id,
+        resourceId: req.params.orderId
+    })
+    log.info("Fetch order started")
     const {orderId} = req.params
     if(!mongoose.Types.ObjectId.isValid(orderId)){
         throw new ApiError(400, "Invalid Order Id format")
@@ -177,10 +224,18 @@ const getOrderById = asyncHandler(async (req, res) => {
     if(!order){
         throw new ApiError(404, "Order not found")
     }
+    log.info("Order fetched successfully")
     return res.status(200).json(new ApiResponse(200, order, "Order fetched successfully"))
 })
 
 const updateUserStatus = asyncHandler(async(req, res) => {
+    const log = req.log.child({
+        module: "admin",
+        operation: "updateUserStatus",
+        userId: req.user._id,
+        resourceId: req.params.userId
+    })
+    log.info("Update user status started")
     const {userId} = req.params
     const {action, duration, reason} = req.body
 
@@ -245,14 +300,26 @@ const updateUserStatus = asyncHandler(async(req, res) => {
     }
     
     await cacheDel(CacheKeys.userProfile(userId))
+    log.info(`User ${action} successfully`)
     return res.status(200).json(new ApiResponse(200, user, `User ${action} successfully`))
 
 })
 
 const deleteUser = asyncHandler(async(req, res) => {
+    const log = req.log.child({
+        module: "admin",
+        operation: "deleteUser",
+        userId: req.user._id,
+        resourceId: req.params.userId
+    })
+    log.info("Delete user started")
     const {userId} = req.params
     if(!mongoose.Types.ObjectId.isValid(userId)){
         throw new ApiError(400, "Invalid User Id format")
+    }
+    const userExists = await User.findById(userId)
+    if(!userExists){
+        throw new ApiError(404, "User  not found")
     }
 
     const session = await mongoose.startSession();
@@ -264,9 +331,6 @@ const deleteUser = asyncHandler(async(req, res) => {
 
     try {
         user = await User.findByIdAndDelete(userId, {session})
-        if(!user){
-            throw new ApiError(404, "User not found")
-        }
         avatarUrl = user.avatar
         if(user.wishlist){
             await Wishlist.findByIdAndDelete(user.wishlist, {session})
@@ -280,10 +344,11 @@ const deleteUser = asyncHandler(async(req, res) => {
         }
         await Review.deleteMany({user: userId}, {session})
         await session.commitTransaction();
-    } catch (error) {
+    } catch (err) {
+        log.error({err}, "Delete user transaction failed, aborting")
         await session.abortTransaction();
 
-        throw new ApiError(500, "Transaction failed: " + error.message)
+        throw new ApiError(500, "Transaction failed: " + err.message)
     } finally {
         session.endSession();
     }
@@ -305,10 +370,18 @@ const deleteUser = asyncHandler(async(req, res) => {
     await cacheDel(CacheKeys.userProfile(userId))
     await invalidateSellerProductsCache(userId)
     
+    log.info("User deleted successfully")
     return res.status(200).json(new ApiResponse(200, {}, "User deleted successfully"))
 })
 
 const updateUserRole = asyncHandler(async (req, res) => {
+    const log = req.log.child({
+        module: "admin",
+        operation: "updateUserRole",
+        userId: req.user._id,
+        resourceId: req.params.userId
+    })
+    log.info("Update user role started")
     const {userId} = req.params
     const {role} = req.body
     const validRoles = ["customer", "seller", "admin"]
@@ -332,6 +405,7 @@ const updateUserRole = asyncHandler(async (req, res) => {
 
     await cacheDel(CacheKeys.userProfile(userId))
 
+    log.info("User role changed successfully")
     return res.status(200).json(new ApiResponse(200, {}, "User role changed successfully"))
 })
 
@@ -359,4 +433,4 @@ export {
 
 //THIS WILL NEED FOR ME TO CREATE WORKFLOW FOR IT
 // getAllReports, getReportById, resolveReport, deleteReportedContent
-// approveSeller rejectSellerApplicatio
+// approveSeller rejectSellerApplication
