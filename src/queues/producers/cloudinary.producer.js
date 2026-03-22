@@ -8,9 +8,10 @@ const jobOptions = {
     }
 }
 
-const addDeleteFromCloudinary = (filePublicId) => {
+const addDeleteFromCloudinary = (filePublicId, reqId) => {
     getCloudinaryQueue().add("deleteFromCloudinary", {
-        filePublicId
+        filePublicId,
+        reqId
     }, jobOptions)
 }
 

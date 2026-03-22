@@ -53,7 +53,7 @@ const createProduct = asyncHandler(async (req, res) => {
             log.warn("Failed to upload all the images to cloudinary, rolling back")
             for(const link of cloudinaryLinks){
                 const publicId = extractPublicId(link)
-                addDeleteFromCloudinary(publicId)
+                addDeleteFromCloudinary(publicId, req.id)
             }
             throw new ApiError(500, "Could not upload images on cloudinary")
         }
@@ -87,7 +87,7 @@ const createProduct = asyncHandler(async (req, res) => {
 
         for(const link of cloudinaryLinks){
             const publicId = extractPublicId(link)
-            addDeleteFromCloudinary(publicId)
+            addDeleteFromCloudinary(publicId, req.id)
         }
 
         log.error({err}, "Product creation failed, rolling back cloudinary uploads")
@@ -119,7 +119,7 @@ const deleteProduct = asyncHandler(async (req, res) => {
     }
     for(const imageUrl of product.image){
         const publicId = extractPublicId(imageUrl)
-        addDeleteFromCloudinary(publicId)
+        addDeleteFromCloudinary(publicId, req.id)
     }
 
     await cacheDel(CacheKeys.product(productId))
@@ -206,7 +206,7 @@ const updateProduct = asyncHandler(async (req, res) => {
                 log.warn("Failed to upload all the images to cloudinary, rolling back")
                 for(const link of cloudinaryLinks){
                     const publicId = extractPublicId(link)
-                    addDeleteFromCloudinary(publicId)
+                    addDeleteFromCloudinary(publicId, req.id)
                 }
                 throw new ApiError(500, "Could not upload images to cloudinary")
             }
@@ -230,14 +230,14 @@ const updateProduct = asyncHandler(async (req, res) => {
         if(imagePaths && imagePaths.length){
             for(const image of product.image){
                 const publicId = extractPublicId(image)
-                addDeleteFromCloudinary(publicId)
+                addDeleteFromCloudinary(publicId, req.id)
             }
         }
     } catch (err) {
         log.error({err}, "Product update failed, rolling back cloudinary uploads")
         for(const link of cloudinaryLinks){
             const publicId = extractPublicId(link)
-            addDeleteFromCloudinary(publicId)
+            addDeleteFromCloudinary(publicId, req.id)
         }
         throw new ApiError(500, "Transaction failed: " + err.message)
     }

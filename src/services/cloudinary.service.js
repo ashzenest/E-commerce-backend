@@ -27,10 +27,10 @@ const deleteFromCloudinary = async(filePublicId) => {
             return response
         }
         console.warn("File not found or already deleted:", filePublicId)
-        return null
+        return true
     } catch (error) {
         console.error("Cloudinary deletion failed:", error)
-        return null
+        return false
     }
 }
 

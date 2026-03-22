@@ -8,26 +8,29 @@ const jobOptions = {
     }
 }
 
-const addChangeEmailRequestToQueue = async(email, fullname, magicLink) => {
+const addChangeEmailRequestToQueue = async(email, fullname, magicLink, reqId) => {
     getEmailQueue().add("sendChangeEmailRequest", {
         email,
         fullname,
-        magicLink
+        magicLink,
+        reqId
     }, jobOptions)
 }
 
-const addForgetPasswordEmailToQueue = async(email, fullname, magicLink) => {
+const addForgetPasswordEmailToQueue = async(email, fullname, magicLink, reqId) => {
     getEmailQueue().add("sendForgetPasswordEmail", {
         email,
         fullname,
-        magicLink
+        magicLink,
+        reqId
     }, jobOptions)
 }
 
-const addSendRegistrationEmailToQueue = async(email, fullname) => {
+const addSendRegistrationEmailToQueue = async(email, fullname, reqId) => {
     getEmailQueue().add("sendRegistrationEmail", {
         email,
-        fullname
+        fullname,
+        reqId
     }, jobOptions)
 }
 

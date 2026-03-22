@@ -125,7 +125,7 @@ const deleteProduct = asyncHandler(async (req, res) => {
     }
     for(const imageUrl of product.image){
         const publicId = extractPublicId(imageUrl)
-        addDeleteFromCloudinary(publicId)
+        addDeleteFromCloudinary(publicId, req.id)
     }
 
     await cacheDel(CacheKeys.product(productId))
@@ -355,13 +355,13 @@ const deleteUser = asyncHandler(async(req, res) => {
 
     if(avatarUrl && !avatarUrl.includes("defaultuser")){
         const publicId = extractPublicId(avatarUrl)
-        addDeleteFromCloudinary(publicId)
+        addDeleteFromCloudinary(publicId, req.id)
     }
     for(const product of products){
         if(product.image?.length > 0){
             for(const link of product.image){
                 const publicId = extractPublicId(link)
-                addDeleteFromCloudinary(publicId)
+                addDeleteFromCloudinary(publicId, req.id)
             }
         }
         await cacheDel(CacheKeys.product(product._id))

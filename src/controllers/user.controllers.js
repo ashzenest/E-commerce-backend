@@ -78,7 +78,7 @@ const registerUser = asyncHandler(async (req, res) => {
         if(avatar?.url){
             log.warn("User creation failed, rolling back avatar upload")
             const publicId = extractPublicId(avatar?.url)
-            addDeleteFromCloudinary(publicId)
+            addDeleteFromCloudinary(publicId, req.id)
         }
         throw err
     }
@@ -88,7 +88,7 @@ const registerUser = asyncHandler(async (req, res) => {
     if(!createdUser){
         throw new ApiError(500, "Something went wrong while registering the user")
     }
-    addSendRegistrationEmailToQueue(createdUser.email, createdUser.fullname)
+    addSendRegistrationEmailToQueue(createdUser.email, createdUser.fullname, req.id)
     log.info("User registered successfully")
     return res.status(201).json(new ApiResponse(201, createdUser, "User registered successfully"))
 })
@@ -239,7 +239,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     if(req.user.avatar && !req.user.avatar.includes("/defaultuser/")){
         const publicId = extractPublicId(req.user.avatar)
         if(publicId){
-            addDeleteFromCloudinary(publicId)
+            addDeleteFromCloudinary(publicId, req.id)
         }
     }
 
@@ -371,7 +371,7 @@ const changeEmailRequest = asyncHandler(async (req, res) => {
     const emailChangeToken = user.generateEmailChangeToken(newEmail)
     const magicLink = `${process.env.BASE_URL}/api/users/verify-email-change?token=${emailChangeToken}`
 
-    addChangeEmailRequestToQueue(newEmail, req.user.fullname, magicLink)
+    addChangeEmailRequestToQueue(newEmail, req.user.fullname, magicLink, req.id)
 
     log.info("Verification link sent to user's Email")
     return res.status(200).json(new ApiResponse(200, {}, "Verification link sent to your Email"))
@@ -569,7 +569,7 @@ const changePasswordRequest = asyncHandler(async (req, res) => {
 
     const passwordResetToken = await user.generatePasswordResetToken()
     const magicLink = `${process.env.BASE_URL}/api/users/verify-password-reset?token=${passwordResetToken}`
-    addForgetPasswordEmailToQueue(emailToGetUserFrom, user.fullname, magicLink)
+    addForgetPasswordEmailToQueue(emailToGetUserFrom, user.fullname, magicLink, req.id)
 
     log.info("Password reset link sent to your Email")
     return res.status(200).json(new ApiResponse(200, {}, "Password reset link sent to your Email"))
