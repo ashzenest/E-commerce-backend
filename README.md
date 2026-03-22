@@ -1,6 +1,6 @@
 # 🛒 E-Commerce Backend API
 
-A production-ready e-commerce REST API built with Node.js and Express. Features a full seller/buyer marketplace, real-time support chat, background job processing, distributed caching, and robust auth — all in a clean monolithic architecture before a planned microservices migration.
+A production-ready e-commerce REST API built with Node.js and Express. Features a full seller/buyer marketplace, real-time support chat, background job processing, distributed caching, and robust auth — all in a clean monolithic architecture.
 
 ---
 
@@ -430,10 +430,6 @@ On connection:
 - [ ] Order placement controller (core checkout flow)
 - [ ] Elasticsearch integration for product search
 - [ ] Payment gateway integration
-- [ ] Microservices migration (user, product, order, chat services)
-- [ ] gRPC inter-service communication
-- [ ] API gateway with centralised JWT validation
-- [ ] Kubernetes deployment manifests
 - [ ] Admin analytics dashboard (revenue stats, platform metrics)
 - [ ] Seller application/approval workflow
 - [ ] Report system for users and content
