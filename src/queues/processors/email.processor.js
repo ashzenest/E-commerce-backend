@@ -17,24 +17,24 @@ const createEmailWorker = () => {
         log.info("Sending email started")
 
         if(job.name === "sendChangeEmailRequest"){
-            const {email, fullname, magicLink} = job.data
-            const success = await sendChangeEmailRequest(email, fullname, magicLink)
+            const {email, fullname, magicLink, reqId} = job.data
+            const success = await sendChangeEmailRequest(email, fullname, magicLink, reqId)
             if(!success){
                 log.warn("Email sending failed")
                 return
             }
         }
         if(job.name === "sendForgetPasswordEmail"){
-            const {email, fullname, magicLink} = job.data
-            const success = await sendForgetPasswordEmail(email, fullname, magicLink)
+            const {email, fullname, magicLink, reqId} = job.data
+            const success = await sendForgetPasswordEmail(email, fullname, magicLink, reqId)
             if(!success){
                 log.warn("Email sending failed")
                 return
             }
         }
         if(job.name === "sendRegistrationEmail"){
-            const {email, fullname} = job.data
-            const success = await sendRegistrationEmail(email, fullname)
+            const {email, fullname, reqId} = job.data
+            const success = await sendRegistrationEmail(email, fullname, reqId)
             if(!success){
                 log.warn("Email sending failed")
                 return

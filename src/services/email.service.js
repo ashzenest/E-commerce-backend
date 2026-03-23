@@ -1,6 +1,13 @@
 import { transporter } from "../config/email.config.js";
+import { logger } from "../config/logger.config.js";
 
-const sendEmail = async (to, subject, text, html) => {
+const sendEmail = async (to, subject, text, html, reqId) => {
+  const log = logger.child({
+      phase: "email",
+      operation: "sendEmail",
+      reqId
+  })
+  log.info("Send email started")
   try {
     const info = await transporter.sendMail({
       from: `${process.env.APP_NAME} <${process.env.EMAIL_USER}>`,
@@ -9,45 +16,39 @@ const sendEmail = async (to, subject, text, html) => {
       text,
       html,
     });
+    log.info("Email sent successfully")
     return true
-  } catch (error) {
-    console.error('Error sending email:', error);
+  } catch (err) {
+    log.error({err}, "Send email failed")
     return false
   }
 };
 
-// const sendEmailWithRetry = async(to, subject, text, html, maxRetries = 5) => {
-//     for(let tries = 0; tries <= maxRetries; tries++){
-//         const succeed = await sendEmail(to, subject, text, html)
-//         if(succeed){
-//             return true
-//         } else{
-//             console.warn(`Email could not be sent for ${tries} times`)
-//             if(tries < maxRetries){
-//                 const delay = Math.pow(2, tries) * 1000  // 2s, 4s, 8s, 16s, 32s
-//                 console.log(`Retrying in ${delay/1000} seconds...`)
-//                 await new Promise(resolve => setTimeout(resolve, delay))
-//             }
-//         }
-        
-//     }
-//     console.error(`Email failed after ${maxRetries} attempts`)
-//     return false
-// }
-
-const sendRegistrationEmail = async(userEmail, fullname) => {
+const sendRegistrationEmail = async(userEmail, fullname, reqId) => {
+    const log = logger.child({
+        phase: "email",
+        operation: "sendRegistrationEmail",
+        reqId
+    })
+    log.info("Send registration email started")
     const subject = "User successfully registered"
     const text = `Hello ${fullname},\n\n Thank you for registering to ${process.env.APP_NAME}\n Best regards,\n\n The ${process.env.APP_NAME} Team`
     const html = `<p>Hello ${fullname}</p><p>Thank you for registering to ${process.env.APP_NAME}</p><p>Best regards,<br> The ${process.env.APP_NAME} Team</p>`
-    const sent = await sendEmail(userEmail, subject, text, html)
+    const sent = await sendEmail(userEmail, subject, text, html, reqId)
     if(sent){
-      console.log(`Registration Email sent successfully`)
+      log.info(`Registration Email sent successfully`)
     } else {
-      console.error(`Could not send Registration Email`)
+      log.error(`Could not send Registration Email`)
     }
 }
 
-const sendChangeEmailRequest = async(userEmail, fullname, magicLink) => {
+const sendChangeEmailRequest = async(userEmail, fullname, magicLink, reqId) => {
+  const log = logger.child({
+      phase: "email",
+      operation: "sendChangeEmailRequest",
+      reqId
+  })
+  log.info("Send change email request started")
   const subject = "Confirm your Email change"
   const text = `Hello ${fullname}\n\n To confirm your email change, please click the link below:\n\n ${magicLink}\n\n This link expires in 15 minutes.\n\nIf you didn't request this change, please ignore this email.`
   const html = `
@@ -63,16 +64,22 @@ const sendChangeEmailRequest = async(userEmail, fullname, magicLink) => {
       <p style="color: #666;">This link expires in 15 minutes.</p>
       <p style="color: #666;">If you didn't request this change, please ignore this email.</p>
     </div>`
-  const sent = await sendEmail(userEmail, subject, text, html)
+  const sent = await sendEmail(userEmail, subject, text, html, reqId)
   if(sent){
-      console.log("Change-email request sent successfully")
+      log.info("Change-email request sent successfully")
     } else {
-      console.error("Failed to send change-email request")
+      log.error("Failed to send change-email request")
     }
   return sent
 }
 
-const sendForgetPasswordEmail = async(userEmail, fullname, magicLink) => {
+const sendForgetPasswordEmail = async(userEmail, fullname, magicLink, reqId) => {
+  const log = logger.child({
+      phase: "email",
+      operation: "sendForgetPasswordEmail",
+      reqId
+  })
+  log.info("Send forget password email started")
   const subject = "Confirm your password reset"
   const text = `Hello ${fullname}\n\n To confirm your password reset, please click the link below:\n\n ${magicLink}\n\n This link expires in 15 minutes.\n\nIf you didn't request this change, please ignore this email.`
   const html = `
@@ -89,11 +96,11 @@ const sendForgetPasswordEmail = async(userEmail, fullname, magicLink) => {
       <p style="color: #666;">If you didn't request this change, please ignore this email.</p>
     </div>`
 
-  const sent = await sendEmail(userEmail, subject, text, html)
+  const sent = await sendEmail(userEmail, subject, text, html, reqId)
   if(sent){
-    console.log("Reset password link sent successfully")
+    log.info("Reset password link sent successfully")
   }else{
-    console.error("Failed to send reset-password Email")
+    log.error("Failed to send reset-password Email")
   }
   return sent
 }

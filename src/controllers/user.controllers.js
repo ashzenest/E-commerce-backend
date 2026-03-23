@@ -63,7 +63,7 @@ const registerUser = asyncHandler(async (req, res) => {
     const avatarLocalPath = req.file?.path
     let avatar;
     if(avatarLocalPath){
-        avatar = await uploadOnCloudinary(avatarLocalPath)
+        avatar = await uploadOnCloudinary(avatarLocalPath, req.id)
     }
     let user;
     try{
@@ -223,7 +223,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar required")
     }
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    const avatar = await uploadOnCloudinary(avatarLocalPath, req.id)
 
     if(!avatar?.url){
         throw new ApiError(500, "Could not upload on cloudinary")

@@ -1,35 +1,51 @@
 import fs from "fs"
 import { cloudinary } from "../config/cloudinary.config.js"
+import { logger } from "../config/logger.config.js"
 
-const uploadOnCloudinary = async(localFilePath) => {
+const uploadOnCloudinary = async(localFilePath, reqId) => {
+    const log = logger.child({
+        phase: "cloudinary",
+        operation: "uploadOnCloudinary",
+        reqId
+    })
+    log.info("Upload on cloudinary started")
     try{
         if(!localFilePath){
-            return null
+            return false
         }
         const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto"
         })
         fs.unlinkSync(localFilePath)
+        log.info("Upload on cloudinary successful")
         return response
-    }catch(error){
+    }catch(err){
+        log.error({err}, "Failed to upload image to cloudinary")
         fs.unlinkSync(localFilePath)
-        return null
+        return false
     }
     
 }
 
-const deleteFromCloudinary = async(filePublicId) => {
+const deleteFromCloudinary = async(filePublicId, reqId) => {
+    const log = logger.child({
+        phase: "cloudinary",
+        operation: "deleteFromCloudinary",
+        reqId
+    })
+    log.info("Delete from cloudinary started")
     try {
         const response = await cloudinary.uploader.destroy(filePublicId, {
             resource_type: "auto"
         })
         if(response.result === "ok"){
-            return response
+            log.info({ filePublicId }, "File deleted from cloudinary successfully")
+            return true
         }
-        console.warn("File not found or already deleted:", filePublicId)
+        log.warn({filePublicId}, "File not found or already deleted:")
         return true
-    } catch (error) {
-        console.error("Cloudinary deletion failed:", error)
+    } catch (err) {
+        log.error({err, filePublicId}, "Cloudinary deletion failed")
         return false
     }
 }

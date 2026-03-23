@@ -48,7 +48,7 @@ const createProduct = asyncHandler(async (req, res) => {
     const cloudinaryLinks = []
 
     for(const file of imagePaths){
-        const cloudinaryLink = await uploadOnCloudinary(file.path)
+        const cloudinaryLink = await uploadOnCloudinary(file.path, req.id)
         if(!cloudinaryLink){
             log.warn("Failed to upload all the images to cloudinary, rolling back")
             for(const link of cloudinaryLinks){
@@ -201,7 +201,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     let cloudinaryLinks = []
     if(imagePaths && imagePaths.length){
         for(const file of imagePaths){
-            const cloudinaryLink = await uploadOnCloudinary(file.path)
+            const cloudinaryLink = await uploadOnCloudinary(file.path, req.id)
             if(!cloudinaryLink){
                 log.warn("Failed to upload all the images to cloudinary, rolling back")
                 for(const link of cloudinaryLinks){

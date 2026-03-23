@@ -17,8 +17,8 @@ const createCloudinaryWorker = () => {
         log.info("Deleting image from cloudinary started")
 
         if(job.name === "deleteFromCloudinary"){
-            const {filePublicId} = job.data
-            const success = await deleteFromCloudinary(filePublicId)
+            const {filePublicId, reqId} = job.data
+            const success = await deleteFromCloudinary(filePublicId, reqId)
             if(!success){
                 log.warn({ filePublicId }, "Cloudinary deletion failed")
                 return
