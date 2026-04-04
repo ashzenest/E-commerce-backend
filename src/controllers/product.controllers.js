@@ -141,7 +141,7 @@ const getProductById = asyncHandler(async (req, res) => {
     if(!mongoose.Types.ObjectId.isValid(productId)){
         throw new ApiError(400, "Invalid Product Id format")
     }
-    const product = await getWithLock(CacheKeys.product(productId), 60*60, () => {
+    const product = await getWithLock(CacheKeys.product(productId), 60*60, "Product", () => {
         return Product.findById(productId)
                 .populate("seller", "username fullname avatar")
                 .populate("category", "name description")
@@ -265,7 +265,7 @@ const getProductsBySeller = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid Seller Id format")
     }
 
-    const data = await getWithLock(CacheKeys.productsBySellers(sellerId, page), 60*60*5, async () => {
+    const data = await getWithLock(CacheKeys.productsBySellers(sellerId, page), 60*60*5, "Product", async () => {
         const totalProducts = await Product.countDocuments({seller: sellerId})
         const products = await Product.find({seller: sellerId}).skip(skip).limit(limit)
                                 .populate("seller", "username fullname avatar")

@@ -105,7 +105,7 @@ const getAllCategories = asyncHandler(async (req, res) => {
         userId: req.user?._id
     })
     log.info("Fetch all categories started")
-    const categories = await getWithLock(CacheKeys.allCategory(), 60*60*12, () => {
+    const categories = await getWithLock(CacheKeys.allCategory(), 60*60*12, "Category", () => {
         return Category.find()
     })
     log.info("Categories fetched successfully")
@@ -125,7 +125,7 @@ const getCategoryById = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid Category Id format")
     }
 
-    const category = await getWithLock(CacheKeys.category(categoryId), 60*60*12, () => {
+    const category = await getWithLock(CacheKeys.category(categoryId), 60*60*12, "Category", () => {
         return Category.findById(categoryId)
     })
 

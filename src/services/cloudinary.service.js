@@ -9,22 +9,26 @@ const uploadOnCloudinary = async(localFilePath, reqId) => {
         reqId
     })
     log.info("Upload on cloudinary started")
-    try{
+    try {
         if(!localFilePath){
             return false
         }
         const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto"
         })
-        fs.unlinkSync(localFilePath)
         log.info("Upload on cloudinary successful")
         return response
-    }catch(err){
+    } catch(err) {
         log.error({err}, "Failed to upload image to cloudinary")
-        fs.unlinkSync(localFilePath)
         return false
+    } finally {
+        try {
+            await fs.promises.access(localFilePath)
+            await fs.promises.unlink(localFilePath)
+        } catch(err) {
+            log.debug({err}, "File doesn't exist or is inaccessible")
+        }
     }
-    
 }
 
 const deleteFromCloudinary = async(filePublicId, reqId) => {
@@ -46,7 +50,7 @@ const deleteFromCloudinary = async(filePublicId, reqId) => {
         return true
     } catch (err) {
         log.error({err, filePublicId}, "Cloudinary deletion failed")
-        return false
+        throw err
     }
 }
 

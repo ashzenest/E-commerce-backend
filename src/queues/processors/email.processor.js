@@ -1,7 +1,9 @@
 import { Worker } from "bullmq";
-import { sendChangeEmailRequest, sendForgetPasswordEmail, sendRegistrationEmail } from "../../services/email.service.js";
 import { getRedisClient } from "../../config/valkey.config.js";
 import { logger } from "../../config/logger.config.js"
+import { jobDurations, jobRetriesTotal, jobsTotal, queueDepth } from "../../config/metrics.config.js";
+import { trackDuration } from "../../utils/trackDuration.js";
+import {emailActions} from "../../utils/emailActions.js"
 
 let emailWorker = null
 
@@ -15,44 +17,55 @@ const createEmailWorker = () => {
             reqId: job.data.reqId
         })
         log.info("Sending email started")
+        
+        const action = emailActions[job.name]
+        if(!action){
+            log.error({jobName: job.name}, "Ghost Job detected")
+            return
+        }
+        await trackDuration(jobDurations, {queue: "email"}, async () => {
+            await action(job.data)
+            log.info("Email sent successfully")
+        })
 
-        if(job.name === "sendChangeEmailRequest"){
-            const {email, fullname, magicLink, reqId} = job.data
-            const success = await sendChangeEmailRequest(email, fullname, magicLink, reqId)
-            if(!success){
-                log.warn("Email sending failed")
-                return
-            }
-        }
-        if(job.name === "sendForgetPasswordEmail"){
-            const {email, fullname, magicLink, reqId} = job.data
-            const success = await sendForgetPasswordEmail(email, fullname, magicLink, reqId)
-            if(!success){
-                log.warn("Email sending failed")
-                return
-            }
-        }
-        if(job.name === "sendRegistrationEmail"){
-            const {email, fullname, reqId} = job.data
-            const success = await sendRegistrationEmail(email, fullname, reqId)
-            if(!success){
-                log.warn("Email sending failed")
-                return
-            }
-        }
-        log.info("Email sent successfully")
+    }, {
+        connection: getRedisClient(),
+        concurrency: 5
+    })
 
-    }, {connection: getRedisClient()})
+    emailWorker.on("completed", () => {
+        queueDepth.dec({queue: "email"})
+        jobsTotal.inc({
+            queue: "email",
+            status: "success"
+        })
+    })
 
     emailWorker.on("failed", (job, err) => {
-        logger.error({
+        const maxAttempts = job.opts.attempts ?? 1
+        const isFinal = job.attemptsMade >= maxAttempts
+        const logContext = {
             err,
             phase: "worker",
             queue: "email",
             jobId: job.id,
             attempts: job.attemptsMade,
             reqId: job.data.reqId
-        }, "Email job failed after all retries")
+        }
+        if(isFinal){
+            logger.error(logContext, "Email job failed after all retries")
+            queueDepth.dec({queue: "email"})
+            jobsTotal.inc({
+                queue: "email",
+                status: "failed"
+            })
+        } else {
+            logger.warn(logContext, "Email job failed, moving to retry...")
+            jobRetriesTotal.inc({queue: "email"})
+        }
+    })
+    emailWorker.on("error", (err) => {
+        logger.catastrophe({err}, "Email Worker experienced a critical error")
     })
 }
 

@@ -1,5 +1,7 @@
+import { cacheHitOrMissesTotal } from "../config/metrics.config.js";
 import { getValkeyClient } from "../config/valkey.config.js";
 import { TimeUnit } from "@valkey/valkey-glide";
+import crypto from "crypto";
 
 const blacklistToken = async(userId, accessToken, remainingTTL) => {
     if(remainingTTL <= 0){
@@ -29,9 +31,10 @@ const cacheSet = async(key, value, remainingTTL) => {
     )
 }
 
-const cacheGet = async(key) => {
+const cacheGet = async(key, model) => {
     const valkeyClient = getValkeyClient()
     const result = await valkeyClient.get(key)
+    cacheHitOrMissesTotal.inc({model, result: result ?  "hit" : "miss"})
     return result ? JSON.parse(result) : null
 }
 
@@ -68,35 +71,42 @@ const acquireValkeyLock = async(lockKey, lockValue, remainingTTL) => {
 
 const releaseValkeyLock = async(lockKey, lockValue) => {
     const valkeyClient = getValkeyClient()
-    const value = await valkeyClient.get(lockKey)
-    if(lockValue === value){
-        await valkeyClient.del(lockKey)
-    }
+    const luaScript = `
+    if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+    else
+        return 0
+    end
+    `
+    await valkeyClient.eval(luaScript, [lockKey], [lockValue])
 }
 
-const getWithLock = async(cacheKeys, ttl, dbQuery) => {
-    const cached = await cacheGet(cacheKeys)
+const getWithLock = async(cacheKey, ttl, model, dbQuery) => {
+    const cached = await cacheGet(cacheKey, model)
     if(cached){
         return cached
     }
 
-    const lockKey = `lock:${cacheKeys}`
+    const lockKey = `lock:${cacheKey}`
     const lockValue = crypto.randomUUID()
-    const lockAcquired = await acquireValkeyLock(lockKey, lockValue, 10)
+    const lockAcquired = await acquireValkeyLock(lockKey, lockValue, 200)
     if(!lockAcquired){
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        const cached = await cacheGet(cacheKeys)
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        const cached = await cacheGet(cacheKey, model)
         if(cached){
             return cached
         }
         const result = await dbQuery()
         return result
     }
-
-    const result = await dbQuery()
-    await cacheSet(cacheKeys, result, ttl)
-    await releaseValkeyLock(lockKey, lockValue)
-    return result
+    
+    try {
+        const result = await dbQuery()
+        await cacheSet(cacheKey, result, ttl)
+        return result
+    } finally {
+        await releaseValkeyLock(lockKey, lockValue)
+    }
 }
 
 export {

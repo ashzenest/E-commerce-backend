@@ -1,3 +1,4 @@
+import { queueDepth } from "../../config/metrics.config.js"
 import { getEmailQueue } from "../index.js"
 
 const jobOptions = {
@@ -5,33 +6,40 @@ const jobOptions = {
     backoff: {
         type: "exponential",
         delay: 1000
+    }, 
+    removeOnComplete: true,
+    removeOnFail: {
+        age: 60*60*24
     }
 }
 
 const addChangeEmailRequestToQueue = async(email, fullname, magicLink, reqId) => {
-    getEmailQueue().add("sendChangeEmailRequest", {
+    await getEmailQueue().add("sendChangeEmailRequest", {
         email,
         fullname,
         magicLink,
         reqId
     }, jobOptions)
+    queueDepth.inc({queue: "email"})
 }
 
 const addForgetPasswordEmailToQueue = async(email, fullname, magicLink, reqId) => {
-    getEmailQueue().add("sendForgetPasswordEmail", {
+    await getEmailQueue().add("sendForgetPasswordEmail", {
         email,
         fullname,
         magicLink,
         reqId
     }, jobOptions)
+    queueDepth.inc({queue: "email"})
 }
 
 const addSendRegistrationEmailToQueue = async(email, fullname, reqId) => {
-    getEmailQueue().add("sendRegistrationEmail", {
+    await getEmailQueue().add("sendRegistrationEmail", {
         email,
         fullname,
         reqId
     }, jobOptions)
+    queueDepth.inc({queue: "email"})
 }
 
 export {

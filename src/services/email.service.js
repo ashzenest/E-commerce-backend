@@ -20,7 +20,7 @@ const sendEmail = async (to, subject, text, html, reqId) => {
     return true
   } catch (err) {
     log.error({err}, "Send email failed")
-    return false
+    throw err
   }
 };
 
@@ -37,8 +37,6 @@ const sendRegistrationEmail = async(userEmail, fullname, reqId) => {
     const sent = await sendEmail(userEmail, subject, text, html, reqId)
     if(sent){
       log.info(`Registration Email sent successfully`)
-    } else {
-      log.error(`Could not send Registration Email`)
     }
 }
 
@@ -66,11 +64,8 @@ const sendChangeEmailRequest = async(userEmail, fullname, magicLink, reqId) => {
     </div>`
   const sent = await sendEmail(userEmail, subject, text, html, reqId)
   if(sent){
-      log.info("Change-email request sent successfully")
-    } else {
-      log.error("Failed to send change-email request")
-    }
-  return sent
+    log.info("Change-email request sent successfully")
+  }
 }
 
 const sendForgetPasswordEmail = async(userEmail, fullname, magicLink, reqId) => {
@@ -99,10 +94,7 @@ const sendForgetPasswordEmail = async(userEmail, fullname, magicLink, reqId) => 
   const sent = await sendEmail(userEmail, subject, text, html, reqId)
   if(sent){
     log.info("Reset password link sent successfully")
-  }else{
-    log.error("Failed to send reset-password Email")
   }
-  return sent
 }
 
 export {

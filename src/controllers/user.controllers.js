@@ -423,7 +423,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
         userId: req.user._id
     })
     log.info("Fetch current user started")
-    const user = await getWithLock(CacheKeys.userProfile(req.user._id), 60*60, () => {
+    const user = await getWithLock(CacheKeys.userProfile(req.user._id), 60*60, "User", () => {
         return User.findById(req.user._id).select("-refreshToken -orders -wishlist -products")
         })
     if(!user){
