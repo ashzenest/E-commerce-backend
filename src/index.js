@@ -7,6 +7,7 @@ import { app } from "./app.js";
 import { connectValkey } from "./config/valkey.config.js";
 import { initializeSocket } from "./socket/index.js";
 import { logger } from "./config/logger.config.js";
+import { startApiMetricApp } from "./apiMetricApp.js";
 
 const server = http.createServer(app)
 
@@ -15,6 +16,7 @@ const start = async() => {
     await connectDatabase()
     await connectValkey()
     initializeSocket(server)
+    startApiMetricApp()
     server.listen(process.env.PORT || 5000, () => {
         logger.info({ port: process.env.PORT || 5000 }, "Server started")
     })

@@ -1,4 +1,4 @@
-import { cacheHitOrMissesTotal } from "../config/metrics.config.js";
+import { cacheHitOrMissesTotal } from "../config/metric/api.metrics.js";
 import { getValkeyClient } from "../config/valkey.config.js";
 import { TimeUnit } from "@valkey/valkey-glide";
 import crypto from "crypto";

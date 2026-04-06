@@ -13,10 +13,12 @@ import mongoSanitize from "express-mongo-sanitize"
 import pinoHttp from "pino-http"
 import { logger } from "./config/logger.config.js"
 import { errorMiddleware } from "./middlewares/error.middleware.js"
+import { metricsMiddleware } from "./middlewares/metrics.middleware.js"
 
 const app = express()
 
 app.use(helmet())
+app.use(metricsMiddleware)
 app.use(pinoHttp({logger}))
 app.use(mongoSanitize())
 

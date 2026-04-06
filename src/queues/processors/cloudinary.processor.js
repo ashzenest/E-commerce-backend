@@ -1,9 +1,10 @@
 import { Worker } from "bullmq";
 import { getRedisClient } from "../../config/valkey.config.js"
 import { logger } from "../../config/logger.config.js";
-import { jobDurations, jobRetriesTotal, jobsTotal, queueDepth } from "../../config/metrics.config.js";
+import { jobDurations, jobRetriesTotal, jobsTotal, queueDepth } from "../../config/metric/worker.metrics.js";
 import { trackDuration } from "../../utils/trackDuration.js";
 import {cloudinaryActions} from "../../utils/cloudinaryActions.js"
+import { getCloudinaryQueue } from "../index.js"
 
 let cloudinaryWorker = null
 
@@ -34,7 +35,6 @@ const createCloudinaryWorker = () => {
     })
 
     cloudinaryWorker.on("completed", () => {
-        queueDepth.dec({queue: "cloudinary"})
         jobsTotal.inc({
             queue: "cloudinary",
             status: "success"
@@ -54,7 +54,6 @@ const createCloudinaryWorker = () => {
         }
         if (isFinal){
             logger.error(logContext, "Cloudinary job failed after all retries")
-            queueDepth.dec({queue: "cloudinary"})
             jobsTotal.inc({
                 queue: "cloudinary",
                 status: "failed"
@@ -68,6 +67,12 @@ const createCloudinaryWorker = () => {
     cloudinaryWorker.on("error", (err) => {
         logger.catastrophe({err}, "Cloudinary Worker experienced a critical error")
     })
+
+    const updateCloudinaryQueueDepth = async() => {
+        const counts = await getCloudinaryQueue().getJobCounts("waiting", "active", "delayed")
+        queueDepth.set({queue: "cloudinary"}, counts.waiting + counts.active + counts.delayed)
+    }
+    setInterval(updateCloudinaryQueueDepth, 1000)
 }
 
 export {createCloudinaryWorker}

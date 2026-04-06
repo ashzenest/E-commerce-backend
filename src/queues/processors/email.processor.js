@@ -1,9 +1,10 @@
 import { Worker } from "bullmq";
 import { getRedisClient } from "../../config/valkey.config.js";
 import { logger } from "../../config/logger.config.js"
-import { jobDurations, jobRetriesTotal, jobsTotal, queueDepth } from "../../config/metrics.config.js";
+import { jobDurations, jobRetriesTotal, jobsTotal, queueDepth } from "../../config/metric/worker.metrics.js";
 import { trackDuration } from "../../utils/trackDuration.js";
 import {emailActions} from "../../utils/emailActions.js"
+import { getEmailQueue } from "../index.js"
 
 let emailWorker = null
 
@@ -34,7 +35,6 @@ const createEmailWorker = () => {
     })
 
     emailWorker.on("completed", () => {
-        queueDepth.dec({queue: "email"})
         jobsTotal.inc({
             queue: "email",
             status: "success"
@@ -54,7 +54,6 @@ const createEmailWorker = () => {
         }
         if(isFinal){
             logger.error(logContext, "Email job failed after all retries")
-            queueDepth.dec({queue: "email"})
             jobsTotal.inc({
                 queue: "email",
                 status: "failed"
@@ -67,6 +66,13 @@ const createEmailWorker = () => {
     emailWorker.on("error", (err) => {
         logger.catastrophe({err}, "Email Worker experienced a critical error")
     })
+
+    const updateEmailQueueDepth = async () => {
+        const counts = await getEmailQueue().getJobCounts("waiting", "active", "delayed")
+        queueDepth.set({queue: "email"}, counts.waiting + counts.active + counts.delayed)
+    }
+
+    setInterval(updateEmailQueueDepth, 1000)
 }
 
 export {createEmailWorker}

@@ -1,4 +1,3 @@
-import { queueDepth } from "../../config/metrics.config.js"
 import { getCloudinaryQueue } from "../index.js"
 
 const jobOptions = {
@@ -18,7 +17,6 @@ const addDeleteFromCloudinary = async (filePublicId, reqId) => {
         filePublicId,
         reqId
     }, jobOptions)
-    queueDepth.inc({queue: "cloudinary"})
 }
 
 export {addDeleteFromCloudinary}

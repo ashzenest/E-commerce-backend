@@ -1,4 +1,4 @@
-import { activeRequests, httpRequestDuration, httpTotalRequests } from "../config/metrics.config.js";
+import { activeRequests, httpRequestDuration, httpTotalRequests } from "../config/metric/api.metrics.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const metricsMiddleware = asyncHandler((req, res, next) => {

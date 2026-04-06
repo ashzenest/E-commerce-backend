@@ -1,4 +1,3 @@
-import { queueDepth } from "../../config/metrics.config.js"
 import { getEmailQueue } from "../index.js"
 
 const jobOptions = {
@@ -20,7 +19,6 @@ const addChangeEmailRequestToQueue = async(email, fullname, magicLink, reqId) =>
         magicLink,
         reqId
     }, jobOptions)
-    queueDepth.inc({queue: "email"})
 }
 
 const addForgetPasswordEmailToQueue = async(email, fullname, magicLink, reqId) => {
@@ -30,7 +28,6 @@ const addForgetPasswordEmailToQueue = async(email, fullname, magicLink, reqId) =
         magicLink,
         reqId
     }, jobOptions)
-    queueDepth.inc({queue: "email"})
 }
 
 const addSendRegistrationEmailToQueue = async(email, fullname, reqId) => {
@@ -39,7 +36,6 @@ const addSendRegistrationEmailToQueue = async(email, fullname, reqId) => {
         fullname,
         reqId
     }, jobOptions)
-    queueDepth.inc({queue: "email"})
 }
 
 export {
