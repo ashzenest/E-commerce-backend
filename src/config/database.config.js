@@ -5,9 +5,9 @@ const connectDatabase = async() => {
     logger.info("Connecting to Database")
     for(let i = 0; i<5; i++){
         try{
-            await mongoose.connect(`${process.env.MONGODB_URI}/${process.env.DB_NAME}`)
+            const databaseInstance = await mongoose.connect(`${process.env.MONGODB_URI}/${process.env.DB_NAME}`)
             logger.info("Successfully connected to Database")
-            return
+            return databaseInstance
         }catch(err){
             logger.error({
                 err,

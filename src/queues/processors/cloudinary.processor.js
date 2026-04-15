@@ -6,10 +6,8 @@ import { trackDuration } from "../../utils/trackDuration.js";
 import {cloudinaryActions} from "../../utils/cloudinaryActions.js"
 import { getCloudinaryQueue } from "../index.js"
 
-let cloudinaryWorker = null
-
 const createCloudinaryWorker = () => {
-    cloudinaryWorker = new Worker("cloudinaryQueue", async(job) => {
+    const cloudinaryWorker = new Worker("cloudinaryQueue", async(job) => {
         const log = logger.child({
             phase: "worker",
             queue: "cloudinary",
@@ -73,6 +71,8 @@ const createCloudinaryWorker = () => {
         queueDepth.set({queue: "cloudinary"}, counts.waiting + counts.active + counts.delayed)
     }
     setInterval(updateCloudinaryQueueDepth, 1000)
+
+    return cloudinaryWorker
 }
 
 export {createCloudinaryWorker}

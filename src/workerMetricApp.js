@@ -17,7 +17,7 @@ workerMetricApp.get("/", isInternal, async (req, res) => {
 })
 
 const startWorkerMetricApp = () => {
-    workerMetricApp.listen(process.env.WORKER_METRICS_APP_PORT, () => {
+    return workerMetricApp.listen(process.env.WORKER_METRICS_APP_PORT, () => {
         logger.info(`Worker metric app is listening on port ${process.env.WORKER_METRICS_APP_PORT}`)
     })
 }

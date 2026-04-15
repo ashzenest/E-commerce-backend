@@ -20,15 +20,15 @@ const connectValkey = async() => {
                     port: parseInt(process.env.VALKEY_PORT)
                 }]
             });
-            logger.info("Valkey connected");
-            return;
+            logger.info("Valkey connected")
+            return valkeyClient
         } catch(err){
             logger.error({
                 err,
                 attempt: i + 1,
                 retryInMs: 2000 * (i + 1)
-            }, `Valkey connection failed attempt ${i + 1}`);
-            await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+            }, `Valkey connection failed attempt ${i + 1}`)
+            await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)))
         }
     }
     logger.catastrophe("Valkey connection failed after maximum tries");
@@ -47,15 +47,15 @@ const connectRedis = async() =>{
                 maxRetriesPerRequest: null
             });
             await redisClient.connect()
-            logger.info("Redis connected");
-            return;
+            logger.info("Redis connected")
+            return redisClient
         } catch(err){
             logger.error({
                 err,
                 attempt: i + 1,
                 retryInMs: 2000 * (i + 1)
-            }, `Redis connection failed attempt ${i + 1}`);
-            await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+            }, `Redis connection failed attempt ${i + 1}`)
+            await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)))
         }
     }
     logger.catastrophe("Redis connection failed after maximum tries");

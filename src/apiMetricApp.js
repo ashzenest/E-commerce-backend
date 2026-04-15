@@ -23,7 +23,7 @@ apiMetricsApp.get("/metrics/private", isInternal, async (req, res) => {
 //const mergedRegistry = Registry.merge([registry1, registry2])
 
 const startApiMetricApp = () => {
-    apiMetricsApp.listen(process.env.API_METRIC_APP_PORT, () => {
+    return apiMetricsApp.listen(process.env.API_METRIC_APP_PORT, () => {
         logger.info(`Api metric app is listening on port ${process.env.API_METRIC_APP_PORT}`)
     })
 }

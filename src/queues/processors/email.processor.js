@@ -6,10 +6,8 @@ import { trackDuration } from "../../utils/trackDuration.js";
 import {emailActions} from "../../utils/emailActions.js"
 import { getEmailQueue } from "../index.js"
 
-let emailWorker = null
-
 const createEmailWorker = () => {
-    emailWorker = new Worker("emailQueue", async(job) => {
+    const emailWorker = new Worker("emailQueue", async(job) => {
         const log = logger.child({
             phase: "worker",
             queue: "email",
@@ -71,8 +69,9 @@ const createEmailWorker = () => {
         const counts = await getEmailQueue().getJobCounts("waiting", "active", "delayed")
         queueDepth.set({queue: "email"}, counts.waiting + counts.active + counts.delayed)
     }
-
     setInterval(updateEmailQueueDepth, 1000)
+    
+    return emailWorker
 }
 
 export {createEmailWorker}
