@@ -13,7 +13,7 @@ const createEmailWorker = () => {
             queue: "email",
             jobId: job.id,
             attempt: job.attemptsMade + 1,
-            reqId: job.data.reqId
+            reqId: job.data?.reqId
         })
         log.info("Sending email started")
         
@@ -24,6 +24,10 @@ const createEmailWorker = () => {
         }
         await trackDuration(jobDurations, {queue: "email"}, async () => {
             await action(job.data)
+            if(job.name === "sendLowStockProductEmail"){
+                const {productId} = job.data
+                await getRedisClient().sadd("low-stock-alert", productId.toString())
+            }
             log.info("Email sent successfully")
         })
 
@@ -32,11 +36,13 @@ const createEmailWorker = () => {
         concurrency: 5
     })
 
-    emailWorker.on("completed", () => {
-        jobsTotal.inc({
-            queue: "email",
-            status: "success"
-        })
+    emailWorker.on("completed", (job) => {
+        if(emailActions[job.name]){
+            jobsTotal.inc({
+                queue: "email",
+                status: "success"
+            })
+        }
     })
 
     emailWorker.on("failed", (job, err) => {
@@ -69,7 +75,8 @@ const createEmailWorker = () => {
         const counts = await getEmailQueue().getJobCounts("waiting", "active", "delayed")
         queueDepth.set({queue: "email"}, counts.waiting + counts.active + counts.delayed)
     }
-    setInterval(updateEmailQueueDepth, 1000)
+    const intervalId = setInterval(updateEmailQueueDepth, 1000)
+    emailWorker.on("closing", () => clearInterval(intervalId))
     
     return emailWorker
 }

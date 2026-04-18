@@ -58,8 +58,8 @@ const connectRedis = async() =>{
             await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)))
         }
     }
-    logger.catastrophe("Redis connection failed after maximum tries");
-    process.exit(1);
+    logger.catastrophe("Redis connection failed after maximum tries")
+    process.exit(1)
 }
 
 const getValkeyClient = () => {

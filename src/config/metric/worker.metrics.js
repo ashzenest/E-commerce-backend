@@ -23,7 +23,7 @@ const jobsTotal = new client.Counter({
 const jobDurations = new client.Histogram({
     name: "job_duration_seconds",
     help: "Time taken to process a job",
-    labelNames: ["queue"],
+    labelNames: ["queue", "status"],
     buckets: [0.1, 0.5, 1, 2, 3, 4, 5],
     registers: [privateRegistry]
 })

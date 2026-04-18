@@ -48,6 +48,10 @@ const productSchema = mongoose.Schema({
     category: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Category"
+    },
+    isNotified: {
+        type: Boolean,
+        default: false
     }
 },{
     timestamps: true
@@ -62,5 +66,7 @@ productSchema.pre("save", function(next){
     }
     next()
 })
+
+productSchema.index({status: 1, isNotified: 1, stock: 1})
 
 export const Product = mongoose.model("Product", productSchema)

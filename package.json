@@ -1,7 +1,7 @@
 {
   "name": "javascript-amazon-project",
   "version": "1.0.0",
-  "description": "A backend for Amazon in MERN",
+  "description": "An E-commerce backend",
   "keywords": [
     "MERN",
     "Backend",
@@ -37,6 +37,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.6",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",

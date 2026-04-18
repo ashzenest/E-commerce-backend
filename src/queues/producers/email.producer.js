@@ -38,8 +38,13 @@ const addSendRegistrationEmailToQueue = async(email, fullname, reqId) => {
     }, jobOptions)
 }
 
+const addSendLowStockEmailToQueue = async (data) => {
+    await getEmailQueue().addBulk(data)
+}
+
 export {
     addChangeEmailRequestToQueue,
     addForgetPasswordEmailToQueue,
-    addSendRegistrationEmailToQueue
+    addSendRegistrationEmailToQueue,
+    addSendLowStockEmailToQueue
 }

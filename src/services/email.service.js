@@ -97,8 +97,30 @@ const sendForgetPasswordEmail = async(userEmail, fullname, magicLink, reqId) => 
   }
 }
 
+const sendLowStockEmail = async (userEmail, fullname, productName, productStock, reqId) => {
+  const log = logger.child({
+    phase: "email",
+    operation: "sendLowStockEmail",
+    reqId
+  })
+  log.info("send low stock product email started")
+  const subject = "Low stock alert"
+  const text = `Hello ${fullname}, Stock of your product ${productName} is low`
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <p>Hello ${fullname},</p>
+      <p>Your product's stock is low, please refill the stock</p>
+      <p>${productName}'s stock is currently at ${productStock}, please refill/update the stock soon</p>
+    </div>`
+  const sent = await sendEmail(userEmail, subject, text, html, reqId)
+  if(sent){
+    log.info("Low stock alert email sent successfully")
+  }
+}
+
 export {
   sendRegistrationEmail,
   sendChangeEmailRequest,
-  sendForgetPasswordEmail
+  sendForgetPasswordEmail,
+  sendLowStockEmail
 }
