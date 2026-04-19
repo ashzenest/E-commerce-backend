@@ -4,7 +4,7 @@ import "./config/cloudinary.config.js";
 import http from "http"
 import { connectDatabase } from "./config/database.config.js";
 import { app } from "./app.js";
-import { connectValkey } from "./config/valkey.config.js";
+import { connectRedis, connectValkey } from "./config/valkey.config.js";
 import { initializeSocket } from "./socket/index.js";
 import { logger } from "./config/logger.config.js";
 import { startApiMetricApp } from "./apiMetricApp.js";
@@ -17,6 +17,7 @@ const resources = {
     server,
     databaseInstance: undefined,
     valkeyInstance: undefined,
+    redisInstance: undefined,
     io: undefined,
     apiMetricAppInstance: undefined,
     logger
@@ -32,6 +33,7 @@ const start = async() => {
 
     resources.databaseInstance = await connectDatabase()
     resources.valkeyInstance = await connectValkey()
+    resources.redisInstance = await connectRedis()
     resources.io = initializeSocket(server)
     resources.apiMetricAppInstance = startApiMetricApp()
 

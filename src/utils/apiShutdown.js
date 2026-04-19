@@ -6,7 +6,7 @@ const shutdownHandler = (resources) => {
 
         isShuttingDown = true
 
-        const {server, apiMetricAppInstance, io, databaseInstance, valkeyInstance, logger} = resources
+        const {server, apiMetricAppInstance, io, databaseInstance, valkeyInstance, redisInstance, logger} = resources
         
         logger.info(`Received ${signal}, shutting down the server...`)
 
@@ -21,6 +21,7 @@ const shutdownHandler = (resources) => {
             if(apiMetricAppInstance) await stopServer(apiMetricAppInstance)
             if(io) await new Promise((resolve) => io.close(resolve))
             if(valkeyInstance) await valkeyInstance.close()
+            if(redisInstance) await redisInstance.quit()
             if(databaseInstance) await databaseInstance.disconnect()
             if(logger) await logger.flush()
             process.exit(0)
