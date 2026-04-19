@@ -20,7 +20,7 @@ const shutdownHandler = (resources) => {
             if(server) await stopServer(server)
             if(apiMetricAppInstance) await stopServer(apiMetricAppInstance)
             if(io) await new Promise((resolve) => io.close(resolve))
-            if(valkeyInstance) await valkeyInstance.quit()
+            if(valkeyInstance) await valkeyInstance.close()
             if(databaseInstance) await databaseInstance.disconnect()
             if(logger) await logger.flush()
             process.exit(0)
