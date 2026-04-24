@@ -1,3 +1,4 @@
+import { logger } from "../config/logger.config.js";
 import { cacheHitOrMissesTotal } from "../config/metric/api.metrics.js";
 import { getValkeyClient } from "../config/valkey.config.js";
 import { TimeUnit } from "@valkey/valkey-glide";
@@ -78,7 +79,19 @@ const releaseValkeyLock = async(lockKey, lockValue) => {
         return 0
     end
     `
-    await valkeyClient.eval(luaScript, [lockKey], [lockValue])
+    try {
+        const result = await valkeyClient.exec([
+            "EVAL", 
+            luaScript, 
+            "1",
+            lockKey,
+            lockValue
+        ])
+        return result === 1;
+    } catch (err) {
+        logger.error({err}, "Failed to release lock")
+        throw err
+    }
 }
 
 const getWithLock = async(cacheKey, ttl, model, dbQuery) => {

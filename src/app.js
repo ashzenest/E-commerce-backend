@@ -20,7 +20,7 @@ const app = express()
 app.use(helmet())
 app.use(metricsMiddleware)
 app.use(pinoHttp({logger}))
-app.use(mongoSanitize())
+//app.use(mongoSanitize())
 
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
